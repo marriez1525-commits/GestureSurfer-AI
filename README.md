@@ -1,39 +1,39 @@
 # 🏄‍♂️ GestureSurfer AI
 
-GestureSurfer AI is an enterprise-grade computer vision and machine learning framework designed to transform a standard optical webcam into a high-precision, touchless motion-capture gaming controller. By tracking real-time spatial hand telemetry and modeling velocity dynamics, the application translates physical gestures into native hardware-level keyboard inputs, allowing users to control fast-paced endless runner games like *Subway Surfers* with zero physical contact.
+GestureSurfer AI is an advanced computer vision and machine learning framework designed to transform a standard webcam into a touchless, motion-capture gaming controller. By tracking real-time spatial hand telemetry, the application translates physical hand gestures into hardware-level keyboard inputs, allowing users to control fast-paced endless runner games like *Subway Surfers* entirely hands-free.
 
 ---
 
-## 🎯 Key Capabilities
+## 🚀 Key Features
 
-* **21-Point Anatomical Tracking Matrix:** Leverages deep-learning pipeline architectures to map and track 21 distinct spatial landmarks across the hand framework (fingertips, knuckles, and wrist joints), maintaining tracking lock across variable lighting and high-contrast environments.
-* **Concurrent Real-Time Execution:** Built on an optimized asynchronous processing pipeline that ingests video matrices, executes neural inference models, and injects OS-level keypresses with sub-millisecond latencies to minimize critical input lag.
-* **Velocity Vectoring & Jitter Suppression:** Implements a localized calculus layer to measure rapid hand displacement and acceleration across a virtual Cartesian grid, filtering out micro-tremors, nervous shaking, or stray movements to validate deliberate execution intent.
-* **Intelligent HUD & Coordinate Telemetry:** Renders a high-tech visual skeleton graph directly over the webcam stream overlay, supplying the developer or user with instant telemetry output strings (e.g., `[TRIGGER: JUMP]`) for accurate calibration.
-* **Spatial Calibration & Distant Scaling:** Automatically handles horizontal frame mirroring for intuitive user navigation and scales spatial boundaries dynamically, allowing full tracking reliability whether the user is situated close to or far from the sensor.
+* **21-Point Hand Telemetry Matrix:** Utilizes an advanced deep-learning perception model to track 21 distinct anatomical landmarks across the hand (fingertips, knuckles, and wrist joints), ensuring stable tracking under diverse environmental lighting conditions.
+* **Ultra-Low Latency Inference:** Built on a concurrent data-processing loop that ingests frames, runs neural inference, and injects OS-level keypresses with sub-millisecond execution times to eliminate input lag.
+* **Intelligent Anti-Jitter Filtering:** Measures acceleration and spatial displacement across a virtual Cartesian grid, filtering out micro-tremors or accidental movements to trigger inputs *only* on deliberate swipes.
+* **Interactive HUD Overlay:** Features a live Head-Up Display (HUD) mapped onto the video capture window, rendering a real-time digital skeleton over the user's hand alongside active action cues (e.g., `[TRIGGER: JUMP]`).
+* **Adaptive Mirroring & Distance Scaling:** Automatically mirrors the video feed for intuitive directional mapping and dynamically adjusts tracking thresholds based on the user's distance from the camera.
 
 ---
 
-## 🛠️ Technical Architecture & Ecosystem
+## 🛠️ System Architecture & Tech Stack
 
-The framework relies on a modular, decoupled Python system architecture engineered for optimized machine learning operations at the edge:
+The application relies on a modular Python pipeline optimized for real-time edge processing:
 
-* **Perception Engine:** `MediaPipe Hands` (Deep learning inference pipeline) & `OpenCV` (Video capture, preprocessing, and matrix translation)
-* **Mathematical Operations:** `NumPy` (High-speed vector calculations and geometric coordinate mapping)
-* **OS Interfacing:** `PyAutoGUI` (Direct hardware-level keystroke emulation and system input mapping)
+* **Computer Vision & Tracking:** `OpenCV` (Video ingestion and image preprocessing) and `MediaPipe` (Hand landmark inference)
+* **Input Injection:** `PyAutoGUI` / Native OS integration for direct, hardware-level keystroke emulation
+* **Mathematical Optimization:** `NumPy` for high-speed spatial coordinate and velocity vector calculations
 
-### Project Architecture
+### Project Structure
 ```text
 GestureSurferAI/
 │
-├── main.py              # System entry point and orchestration loop
+├── main.py              # Application entry point and main execution loop
 ├── core/
 │   ├── __init__.py
-│   ├── tracking.py      # Telemetry extraction and anatomical landmark mapping
-│   └── input_driver.py  # Emulation engine and native keyboard simulation
+│   ├── tracking.py      # MediaPipe hand tracking and landmark extraction
+│   └── input_driver.py  # PyAutoGUI keyboard simulation logic
 │
 ├── utils/
 │   ├── __init__.py
-│   └── filters.py       # Cartesian displacement metrics and jitter cancellation
+│   └── filters.py       # Velocity vector calculations and jitter reduction
 │
-└── requirements.txt     # System dependency manifest
+└── requirements.txt     # Project dependencies
