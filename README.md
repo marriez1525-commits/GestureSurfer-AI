@@ -1,27 +1,16 @@
 # 🏄‍♂️ GestureSurfer AI
 
-GestureSurfer AI is a computer vision and machine learning framework designed to turn standard webcams into touchless, motion-capture gaming controllers. By tracking real-time spatial hand telemetry, the application translates physical gestures into hardware-level keyboard inputs. This allows users to control fast-paced endless runner games like *Subway Surfers* entirely hands-free.
-
-The system bridges the physical and digital worlds by replacing traditional keyboard arrays with a dynamic, low-latency gesture execution pipeline.
+GestureSurfer AI is a computer vision and machine learning framework designed to turn a standard webcam into a touchless, motion-capture gaming controller. By tracking real-time spatial hand telemetry, the application translates physical hand gestures into hardware-level keyboard inputs, allowing users to control fast-paced endless runner games like *Subway Surfers* entirely hands-free.
 
 ---
 
-## 🚀 Core Features
+## 🚀 Key Features
 
-### 🎯 21-Point Hand Telemetry Matrix
-Utilizes a deep-learning perception model to map 21 distinct anatomical landmarks across the hand (fingertips, knuckles, and wrist joints). This ensure robust tracking stability under varying lighting conditions and complex background environments.
-
-### 🏎️ Ultra-Low Latency Execution Engine
-Built on a concurrent data-processing loop that ingests frames, runs neural inference, and injects OS-level keypresses with sub-millisecond execution times, preventing input lag during high-stakes gameplay.
-
-### 🧠 Velocity Vectoring & Anti-Jitter Filtering
-Implements dynamic tracking that measures acceleration and spatial displacement across a virtual Cartesian grid. The system intelligently filters out micro-tremors, passive drifting, and accidental hand movements, triggering inputs *only* on deliberate, high-velocity gestures.
-
-### 🖥️ High-Tech HUD Overlay
-Features an interactive, live feedback Head-Up Display (HUD) mapped directly onto the video capture window. It renders a real-time digital skeleton over the user's hand and displays active visual cues (e.g., `[TRIGGER: JUMP]`) for instant calibration.
-
-### 🔄 Adaptive Mirroring & Distance Scaling
-Automatically mirrors the incoming webcam feed to make directional movements feel natural and intuitive. The tracking thresholds automatically adapt based on the user's distance from the camera, eliminating the need to overextend or strain during gestures.
+* **21-Point Hand Telemetry:** Utilizes an advanced perception model to map 21 distinct anatomical landmarks across the hand (fingertips, knuckles, and wrist joints) for stable tracking in diverse environmental lighting.
+* **Ultra-Low Latency Execution:** Built on a concurrent data-processing loop that ingests frames, runs neural inference, and injects OS-level keypresses with sub-millisecond execution times to eliminate input lag.
+* **Intelligent Anti-Jitter Filtering:** Measures acceleration and spatial displacement across a virtual Cartesian grid, filtering out micro-tremors and accidental movements to trigger inputs *only* on deliberate swipes.
+* **Interactive HUD Overlay:** Features a live Head-Up Display (HUD) mapped onto the video capture window, rendering a real-time digital skeleton over the user's hand alongside active action cues (e.g., `[TRIGGER: JUMP]`).
+* **Adaptive Mirroring & Distance Scaling:** Automatically mirrors the video feed for intuitive directional mapping and dynamically adjusts tracking thresholds based on the user's distance from the camera.
 
 ---
 
