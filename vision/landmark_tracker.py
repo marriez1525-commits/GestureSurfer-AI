@@ -1,0 +1,169 @@
+"""
+landmark_tracker.py
+
+Provides easy access to important hand landmark positions.
+"""
+
+import math
+
+
+class LandmarkTracker:
+    """
+    Extracts useful coordinates from MediaPipe hand landmarks.
+    """
+
+    # MediaPipe landmark indexes
+    WRIST = 0
+
+    THUMB_TIP = 4
+
+    INDEX_TIP = 8
+    INDEX_PIP = 6
+
+    MIDDLE_TIP = 12
+    MIDDLE_PIP = 10
+
+    RING_TIP = 16
+    RING_PIP = 14
+
+    PINKY_TIP = 20
+    PINKY_PIP = 18
+
+    def __init__(self):
+        self.landmarks = None
+
+    def update(self, landmarks):
+        """
+        Update the current hand landmarks.
+        """
+
+        self.landmarks = landmarks
+
+    def get_point(self, landmark_id):
+        """
+        Return the x and y coordinates of a landmark.
+
+        MediaPipe coordinates are normalized between 0 and 1.
+        """
+
+        if self.landmarks is None:
+            return None
+
+        if landmark_id >= len(self.landmarks):
+            return None
+
+        landmark = self.landmarks[landmark_id]
+
+        return landmark.x, landmark.y
+
+    def get_wrist(self):
+        """
+        Return wrist coordinates.
+        """
+
+        return self.get_point(self.WRIST)
+
+    def get_index_tip(self):
+        """
+        Return index fingertip coordinates.
+        """
+
+        return self.get_point(self.INDEX_TIP)
+
+    def get_middle_tip(self):
+        """
+        Return middle fingertip coordinates.
+        """
+
+        return self.get_point(self.MIDDLE_TIP)
+
+    def get_palm_center(self):
+        """
+        Estimate the center of the palm.
+
+        Uses wrist + index MCP + middle MCP +
+        ring MCP + pinky MCP.
+        """
+
+        if self.landmarks is None:
+            return None
+
+        points = [
+            self.landmarks[0],   # Wrist
+            self.landmarks[5],   # Index MCP
+            self.landmarks[9],   # Middle MCP
+            self.landmarks[13],  # Ring MCP
+            self.landmarks[17],  # Pinky MCP
+        ]
+
+        x = sum(point.x for point in points) / len(points)
+        y = sum(point.y for point in points) / len(points)
+
+        return x, y
+
+    def distance(self, point1, point2):
+        """
+        Calculate distance between two points.
+        """
+
+        if point1 is None or point2 is None:
+            return 0
+
+        return math.sqrt(
+            (point1[0] - point2[0]) ** 2 +
+            (point1[1] - point2[1]) ** 2
+        )
+
+    def is_finger_extended(self, tip_id, pip_id):
+        """
+        Determine whether a finger is extended.
+
+        This basic method compares the fingertip
+        and PIP joint vertically.
+        """
+
+        tip = self.get_point(tip_id)
+        pip = self.get_point(pip_id)
+
+        if tip is None or pip is None:
+            return False
+
+        return tip[1] < pip[1]
+
+    def get_finger_states(self):
+        """
+        Return the state of the four non-thumb fingers.
+
+        Returns:
+            Dictionary containing True/False values.
+        """
+
+        if self.landmarks is None:
+            return {
+                "index": False,
+                "middle": False,
+                "ring": False,
+                "pinky": False,
+            }
+
+        return {
+            "index": self.is_finger_extended(
+                self.INDEX_TIP,
+                self.INDEX_PIP
+            ),
+
+            "middle": self.is_finger_extended(
+                self.MIDDLE_TIP,
+                self.MIDDLE_PIP
+            ),
+
+            "ring": self.is_finger_extended(
+                self.RING_TIP,
+                self.RING_PIP
+            ),
+
+            "pinky": self.is_finger_extended(
+                self.PINKY_TIP,
+                self.PINKY_PIP
+            ),
+        }
