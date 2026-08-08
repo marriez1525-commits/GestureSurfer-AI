@@ -21,6 +21,7 @@ class Camera:
     """
 
     def __init__(self):
+
         self.camera = cv2.VideoCapture(CAMERA_INDEX)
 
         if not self.camera.isOpened():
@@ -30,15 +31,32 @@ class Camera:
             )
 
         # Set camera resolution
-        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
-        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+        self.camera.set(
+            cv2.CAP_PROP_FRAME_WIDTH,
+            CAMERA_WIDTH
+        )
+
+        self.camera.set(
+            cv2.CAP_PROP_FRAME_HEIGHT,
+            CAMERA_HEIGHT
+        )
+
+        # Try to reduce camera buffering.
+        # This helps reduce delay during fast movements.
+        self.camera.set(
+            cv2.CAP_PROP_BUFFERSIZE,
+            1
+        )
+
+        # Request a reasonable frame rate.
+        self.camera.set(
+            cv2.CAP_PROP_FPS,
+            30
+        )
 
     def read(self):
         """
         Capture one frame from the webcam.
-
-        Returns:
-            frame: The captured camera frame.
         """
 
         success, frame = self.camera.read()
@@ -46,7 +64,8 @@ class Camera:
         if not success:
             return None
 
-        # Mirror the camera like a normal webcam
+        # Mirror webcam.
+        # This makes movement feel natural.
         frame = cv2.flip(frame, 1)
 
         return frame
@@ -61,7 +80,7 @@ class Camera:
 
     def is_opened(self):
         """
-        Check whether the camera is currently available.
+        Check whether the camera is available.
         """
 
         return self.camera.isOpened()

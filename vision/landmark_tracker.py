@@ -1,7 +1,8 @@
 """
 landmark_tracker.py
 
-Provides easy access to important hand landmark positions.
+Provides easy access to important hand landmark positions
+detected by MediaPipe.
 """
 
 import math
@@ -58,71 +59,97 @@ class LandmarkTracker:
 
     def get_wrist(self):
         """
-        Return wrist coordinates.
+        Return the wrist coordinates.
         """
 
         return self.get_point(self.WRIST)
 
     def get_index_tip(self):
         """
-        Return index fingertip coordinates.
+        Return the index fingertip coordinates.
         """
 
         return self.get_point(self.INDEX_TIP)
 
     def get_middle_tip(self):
         """
-        Return middle fingertip coordinates.
+        Return the middle fingertip coordinates.
         """
 
         return self.get_point(self.MIDDLE_TIP)
 
     def get_palm_center(self):
         """
-        Estimate the center of the palm.
+        Calculate a stable center position for the palm.
 
-        Uses wrist + index MCP + middle MCP +
-        ring MCP + pinky MCP.
+        Uses several palm landmarks instead of one finger,
+        so movement works with different hand poses:
+
+            Open hand
+            One finger
+            Two fingers
+            Fist
         """
 
         if self.landmarks is None:
             return None
 
-        points = [
-            self.landmarks[0],   # Wrist
-            self.landmarks[5],   # Index MCP
-            self.landmarks[9],   # Middle MCP
-            self.landmarks[13],  # Ring MCP
-            self.landmarks[17],  # Pinky MCP
+        # Important palm landmarks
+        palm_ids = [
+            0,   # Wrist
+            5,   # Index MCP
+            9,   # Middle MCP
+            13,  # Ring MCP
+            17   # Pinky MCP
         ]
 
-        x = sum(point.x for point in points) / len(points)
-        y = sum(point.y for point in points) / len(points)
+        points = []
 
-        return x, y
+        for landmark_id in palm_ids:
+
+            point = self.landmarks[landmark_id]
+
+            points.append(point)
+
+        # Calculate average X coordinate
+        average_x = sum(
+            point.x for point in points
+        ) / len(points)
+
+        # Calculate average Y coordinate
+        average_y = sum(
+            point.y for point in points
+        ) / len(points)
+
+        return average_x, average_y
 
     def distance(self, point1, point2):
         """
-        Calculate distance between two points.
+        Calculate the distance between two points.
         """
 
         if point1 is None or point2 is None:
             return 0
 
+        x_difference = point1[0] - point2[0]
+
+        y_difference = point1[1] - point2[1]
+
         return math.sqrt(
-            (point1[0] - point2[0]) ** 2 +
-            (point1[1] - point2[1]) ** 2
+            x_difference ** 2 +
+            y_difference ** 2
         )
 
     def is_finger_extended(self, tip_id, pip_id):
         """
         Determine whether a finger is extended.
 
-        This basic method compares the fingertip
-        and PIP joint vertically.
+        This is currently used for future gesture
+        recognition features.
         """
 
         tip = self.get_point(tip_id)
+
         pip = self.get_point(pip_id)
 
         if tip is None or pip is None:
@@ -143,7 +170,7 @@ class LandmarkTracker:
                 "index": False,
                 "middle": False,
                 "ring": False,
-                "pinky": False,
+                "pinky": False
             }
 
         return {
@@ -165,5 +192,5 @@ class LandmarkTracker:
             "pinky": self.is_finger_extended(
                 self.PINKY_TIP,
                 self.PINKY_PIP
-            ),
+            )
         }
