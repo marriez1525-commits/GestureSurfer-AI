@@ -1,3 +1,16 @@
+"""
+main.py
+
+GestureSurfer AI
+
+Combines:
+    Webcam
+    MediaPipe hand tracking
+    Movement detection
+    Gesture classification
+    Keyboard controller
+"""
+
 import cv2
 
 from camera.camera import Camera
@@ -8,12 +21,16 @@ from vision.landmark_tracker import LandmarkTracker
 from vision.motion_tracker import MotionTracker
 from vision.gesture_classifier import GestureClassifier
 
+from controller.game_controller import GameController
+
+from config import ACTION_NONE
+
 
 def main():
 
-    # --------------------------------------------------------
-    # Initialize components
-    # --------------------------------------------------------
+    # ======================================================
+    # INITIALIZE COMPONENTS
+    # ======================================================
 
     camera = Camera()
 
@@ -25,146 +42,212 @@ def main():
 
     gesture_classifier = GestureClassifier()
 
+    game_controller = GameController()
+
     fps_counter = FPSCounter()
 
-    print("======================================")
-    print("       GestureSurfer AI")
-    print("       Gesture Test Mode")
-    print("======================================")
+    # ======================================================
+    # START MESSAGE
+    # ======================================================
+
+    print("=" * 55)
+    print("              GESTURESURFER AI")
+    print("              FULL SYSTEM TEST")
+    print("=" * 55)
+
     print()
-    print("Move your hand:")
-    print("LEFT  -> Move hand left")
-    print("RIGHT -> Move hand right")
-    print("UP    -> Move hand up")
-    print("DOWN  -> Move hand down")
+    print("Hand controls:")
+    print("    Move LEFT  -> Left Arrow")
+    print("    Move RIGHT -> Right Arrow")
+    print("    Move UP    -> Up Arrow")
+    print("    Move DOWN  -> Down Arrow")
     print()
     print("Press Q to quit.")
-    print()
+    print("=" * 55)
 
-    # --------------------------------------------------------
-    # Main loop
-    # --------------------------------------------------------
+    # ======================================================
+    # MAIN LOOP
+    # ======================================================
 
-    while True:
+    try:
 
-        frame = camera.read()
+        while True:
 
-        if frame is None:
-            print("Could not read camera frame.")
-            break
+            # ------------------------------------------------
+            # Read camera
+            # ------------------------------------------------
 
-        # ----------------------------------------------------
-        # Detect hand
-        # ----------------------------------------------------
+            frame = camera.read()
 
-        frame, landmarks = detector.process(frame)
+            if frame is None:
 
-        action = "NONE"
+                print("Could not read camera frame.")
 
-        # ----------------------------------------------------
-        # If hand detected
-        # ----------------------------------------------------
+                break
 
-        if landmarks is not None:
+            # ------------------------------------------------
+            # Detect hand
+            # ------------------------------------------------
 
-            # Give landmarks to tracker
-            landmark_tracker.update(landmarks)
+            frame, landmarks = detector.process(frame)
 
-            # Get palm center
-            palm_position = landmark_tracker.get_palm_center()
+            action = ACTION_NONE
 
-            # Detect movement
-            movement = motion_tracker.update(palm_position)
+            # ------------------------------------------------
+            # Hand detected
+            # ------------------------------------------------
 
-            # Convert movement to game action
-            action = gesture_classifier.classify(movement)
+            if landmarks is not None:
 
-        else:
+                # Give landmarks to tracker
+                landmark_tracker.update(landmarks)
 
-            # No hand
-         gesture_classifier.reset()
-            
+                # Get stable palm position
+                palm_position = (
+                    landmark_tracker.get_palm_center()
+                )
 
-        # ----------------------------------------------------
-        # FPS
-        # ----------------------------------------------------
+                # Detect movement
+                movement = motion_tracker.update(
+                    palm_position
+                )
 
-        fps = fps_counter.update()
+                # Convert movement into action
+                action = gesture_classifier.classify(
+                    movement
+                )
 
-        # ----------------------------------------------------
-        # Display information
-        # ----------------------------------------------------
+                # ------------------------------------------------
+                # Send action to keyboard controller
+                # ------------------------------------------------
 
-        cv2.putText(
-            frame,
-            f"FPS: {fps:.1f}",
-            (20, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (0, 255, 0),
-            2
-        )
+                if action != ACTION_NONE:
 
-        # Hand status
-        if detector.is_hand_detected():
+                    game_controller.execute(action)
 
+            else:
+
+                # No hand detected
+                gesture_classifier.reset()
+
+            # ==================================================
+            # DISPLAY INFORMATION
+            # ==================================================
+
+            fps = fps_counter.update()
+
+            # FPS
             cv2.putText(
                 frame,
-                "HAND DETECTED",
-                (20, 80),
+                f"FPS: {fps:.1f}",
+                (20, 35),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
+                0.7,
                 (0, 255, 0),
                 2
             )
 
-        else:
+            # Hand status
+            if detector.is_hand_detected():
 
+                cv2.putText(
+                    frame,
+                    "HAND: DETECTED",
+                    (20, 70),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 255, 0),
+                    2
+                )
+
+            else:
+
+                cv2.putText(
+                    frame,
+                    "HAND: NOT DETECTED",
+                    (20, 70),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 0, 255),
+                    2
+                )
+
+            # Current action
             cv2.putText(
                 frame,
-                "NO HAND",
-                (20, 80),
+                f"ACTION: {action}",
+                (20, 115),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 0, 255),
-                2
+                1,
+                (255, 255, 0),
+                3
             )
 
-        # ----------------------------------------------------
-        # Display current action
-        # ----------------------------------------------------
+            # Controller status
+            if game_controller.is_enabled():
 
-        cv2.putText(
-            frame,
-            f"ACTION: {action}",
-            (20, 130),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 255, 0),
-            3
-        )
+                cv2.putText(
+                    frame,
+                    "CONTROLLER: ON",
+                    (20, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 255, 0),
+                    2
+                )
 
-        # ----------------------------------------------------
-        # Show window
-        # ----------------------------------------------------
+            else:
 
-        cv2.imshow(
-            "GestureSurfer AI - Gesture Test",
-            frame
-        )
+                cv2.putText(
+                    frame,
+                    "CONTROLLER: OFF",
+                    (20, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 0, 255),
+                    2
+                )
 
-        # Q = quit
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+            # ------------------------------------------------
+            # Show camera
+            # ------------------------------------------------
 
-    # --------------------------------------------------------
-    # Cleanup
-    # --------------------------------------------------------
+            cv2.imshow(
+                "GestureSurfer AI",
+                frame
+            )
 
-    detector.close()
-    camera.release()
+            # ------------------------------------------------
+            # Quit with Q
+            # ------------------------------------------------
 
-    cv2.destroyAllWindows()
+            key = cv2.waitKey(1) & 0xFF
+
+            if key == ord("q"):
+
+                break
+
+    except KeyboardInterrupt:
+
+        print()
+        print("Program stopped.")
+
+    finally:
+
+        # ==================================================
+        # CLEANUP
+        # ==================================================
+
+        game_controller.stop()
+
+        detector.close()
+
+        camera.release()
+
+        cv2.destroyAllWindows()
+
+        print()
+        print("GestureSurfer AI stopped safely.")
 
 
 if __name__ == "__main__":
