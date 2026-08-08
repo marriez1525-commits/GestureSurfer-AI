@@ -28,10 +28,10 @@ SHOW_CAMERA = True
 MAX_NUM_HANDS = 1
 
 # Minimum confidence required to detect a hand
-MIN_DETECTION_CONFIDENCE = 0.7
+MIN_DETECTION_CONFIDENCE = 0.6
 
 # Minimum confidence required to track a detected hand
-MIN_TRACKING_CONFIDENCE = 0.7
+MIN_TRACKING_CONFIDENCE = 0.5
 
 
 # ============================================================
