@@ -1,7 +1,13 @@
 """
 motion_tracker.py
 
-Detects the direction in which the user's hand moves.
+Stable hand movement detection for GestureSurfer AI.
+
+Detects:
+    LEFT
+    RIGHT
+    JUMP
+    ROLL
 """
 
 import time
@@ -21,97 +27,149 @@ from vision.smoothing import MovementSmoother
 
 
 class MotionTracker:
-    """
-    Tracks hand movement and converts it into
-    LEFT, RIGHT, JUMP, or ROLL actions.
-    """
 
     def __init__(self):
+
         self.smoother = MovementSmoother()
 
-        self.previous_position = None
+        # Position where a movement begins
+        self.start_position = None
 
+        # Last detected action
+        self.last_action = ACTION_NONE
+
+        # Time when action was detected
         self.last_action_time = 0
 
     def update(self, position):
-        """
-        Process the current hand position.
-
-        Args:
-            position: (x, y) normalized hand position.
-
-        Returns:
-            One of the action constants.
-        """
 
         if position is None:
             return ACTION_NONE
 
         x, y = position
 
-        # Add current position to smoother
+        # Add new position
         self.smoother.update(x, y)
 
-        smoothed_position = self.smoother.get_smoothed_position()
+        # Get smoothed position
+        current_position = self.smoother.get_smoothed_position()
 
-        if smoothed_position is None:
+        if current_position is None:
             return ACTION_NONE
 
-        current_x, current_y = smoothed_position
+        current_x, current_y = current_position
 
-        # First frame: nothing to compare with
-        if self.previous_position is None:
-            self.previous_position = (current_x, current_y)
+        # --------------------------------------------------
+        # Establish starting position
+        # --------------------------------------------------
+
+        if self.start_position is None:
+
+            self.start_position = (
+                current_x,
+                current_y
+            )
+
             return ACTION_NONE
 
-        previous_x, previous_y = self.previous_position
+        start_x, start_y = self.start_position
 
-        # Calculate movement
-        delta_x = current_x - previous_x
-        delta_y = current_y - previous_y
+        # --------------------------------------------------
+        # Calculate total movement
+        # --------------------------------------------------
 
-        # Update previous position
-        self.previous_position = (current_x, current_y)
+        delta_x = current_x - start_x
+        delta_y = current_y - start_y
 
-        # Check cooldown
+        horizontal = abs(delta_x)
+        vertical = abs(delta_y)
+
+        # Convert threshold to MediaPipe's 0-1 scale
+        horizontal_threshold = HORIZONTAL_THRESHOLD / 1000
+        vertical_threshold = VERTICAL_THRESHOLD / 1000
+
         current_time = time.time()
 
+        # --------------------------------------------------
+        # Cooldown
+        # --------------------------------------------------
+
         if current_time - self.last_action_time < GESTURE_COOLDOWN:
-            return ACTION_NONE
 
-        # ----------------------------------------------------
+            return self.last_action
+
+        # --------------------------------------------------
         # Horizontal movement
-        # ----------------------------------------------------
+        # --------------------------------------------------
 
-        if abs(delta_x) > HORIZONTAL_THRESHOLD / 1000:
+        if (
+            horizontal >= horizontal_threshold
+            and horizontal > vertical
+        ):
 
             self.last_action_time = current_time
 
             if delta_x < 0:
-                return ACTION_LEFT
 
-            return ACTION_RIGHT
+                self.last_action = ACTION_LEFT
 
-        # ----------------------------------------------------
+            else:
+
+                self.last_action = ACTION_RIGHT
+
+            # Start a new movement from current position
+            self.start_position = (
+                current_x,
+                current_y
+            )
+
+            return self.last_action
+
+        # --------------------------------------------------
         # Vertical movement
-        # ----------------------------------------------------
+        # --------------------------------------------------
 
-        if abs(delta_y) > VERTICAL_THRESHOLD / 1000:
+        if (
+            vertical >= vertical_threshold
+            and vertical > horizontal
+        ):
 
             self.last_action_time = current_time
 
             if delta_y < 0:
-                return ACTION_JUMP
 
-            return ACTION_ROLL
+                self.last_action = ACTION_JUMP
+
+            else:
+
+                self.last_action = ACTION_ROLL
+
+            # Start a new movement
+            self.start_position = (
+                current_x,
+                current_y
+            )
+
+            return self.last_action
+
+        # --------------------------------------------------
+        # No new movement
+        # --------------------------------------------------
+
+        self.last_action = ACTION_NONE
 
         return ACTION_NONE
 
     def reset(self):
-        """
-        Reset movement tracking.
-        """
 
         self.smoother.reset()
-        self.previous_position = None
+
+        self.start_position = None
+
+        self.last_action = ACTION_NONE
+
         self.last_action_time = 0
+
+    def get_current_position(self):
+
+        return self.smoother.get_smoothed_position()

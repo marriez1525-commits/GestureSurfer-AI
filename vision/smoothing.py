@@ -14,7 +14,7 @@ class MovementSmoother:
     a smoothed position.
     """
 
-    def __init__(self, max_points=5):
+    def __init__(self, max_points=3):
         self.max_points = max_points
 
         self.x_history = deque(maxlen=max_points)
