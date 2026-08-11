@@ -1,60 +1,70 @@
-# GestureSurfer AI
+# 🏄‍♂️ GestureSurfer AI
 
-An enterprise-grade, ultra-low-latency computer vision framework and human-computer interface (HCI) engineered to convert high-speed physical hand kinetics into real-time, hardware-level keyboard events. Designed specifically for fast-paced, continuous-input gaming environments such as *Subway Surfers*, GestureSurfer AI completely eliminates the need for physical peripherals by deploying an asynchronous multi-threaded perception and vector-kinematics pipeline using standard consumer-grade optical webcams.
-
----
-
-## Project Overview & Core Philosophy
-
-Traditional interactive digital gaming relies heavily on physical input peripherals—keyboards, mice, gamepads, and touchscreens. **GestureSurfer AI** breaks away from these tactile dependencies by establishing a direct spatial interface between human biomechanics and digital operating system events. 
-
-By capturing frame-by-frame anatomical landmark coordinate shifts, the framework projects 3D spatial velocity vector fields directly into low-level keyboard input drivers. The core objective of GestureSurfer AI is to provide a plug-and-play spatial tracking ecosystem capable of maintaining sub-15ms processing latency on standard consumer CPU runtimes without requiring dedicated GPU hardware acceleration.
+An enterprise-grade, real-time computer vision platform and human-computer interface (HCI) engineered to convert high-speed physical hand kinetics into low-latency, hardware-level keypress events. Designed primarily for fast-paced, continuous-input environments like *Subway Surfers*, GestureSurfer AI bypasses physical peripheral devices by deploying a multi-threaded perception and vector-kinematics pipeline through standard consumer optical webcams.
 
 ---
 
-## Detailed System Architecture & Engineering Highlights
+## 🎯 Project Overview & Core Philosophy
+
+Traditional interactive media relies heavily on physical input drivers—keyboards, mice, touchscreens, and game controllers. **GestureSurfer AI** decouples digital input from tactile hardware by utilizing real-time spatial analytics, deep learning feature extraction, and asynchronous key injection. 
+
+By analyzing frame-by-frame anatomical landmark shifts, the platform projects 3D spatial velocity vector fields directly onto OS-level system inputs. The primary objective of GestureSurfer AI is to provide a zero-dependency, plug-and-play spatial tracking system capable of maintaining sub-15ms input latency on standard consumer-grade CPU runtimes without dedicated GPU acceleration.
+
+---
+
+## ✨ Advanced Architecture & Engineering Highlights
 
 ### 1. High-Fidelity 21-Point Landmark Detection
-Utilizing lightweight single-shot detector frameworks powered by MediaPipe Hands, the system identifies and tracks 21 individual hand joint coordinates ($X, Y, Z$) in real time. The model operates with high precision across non-ideal operational environments, including dynamic backlighting, varied skin tones, high-velocity motion blur, and partial hand occlusions.
+Utilizing lightweight single-shot detector frameworks via MediaPipe, the application identifies 21 individual hand joint coordinates ($X, Y, Z$) in real time. The model operates robustly under non-ideal real-world constraints, such as dynamic backlighting, varied skin tones, fast optical motion blur, and minor spatial occlusions.
 
-### 2. Asynchronous Multi-Threaded Frame Ingestion Engine
-To prevent thread starvation and visual latency during computationally intensive frame processing loops, camera frame acquisition is executed on a dedicated background thread. This multi-threaded architecture guarantees an unblocked buffer queue for continuous frame intake, reducing frame drops to near-zero levels even under restrictive operating system thread scheduling.
+### 2. Multi-Threaded Camera Ingestion Engine
+To prevent thread starvation and visual lag during heavy frame-processing sequences, frame acquisition operates on a dedicated background thread (`camera_stream.py`). This guarantees an unblocked buffer queue for frame consumption, capping frame drops to near-zero even under resource-intensive OS scheduling.
 
-### 3. Kinematic Vector Motion Engine
-Static pose matching (such as rigid open-hand or closed-fist gestures) is inadequate for fast-reaction gaming environments. GestureSurfer AI incorporates a continuous vector motion engine that evaluates:
-* Temporal velocity calculations ($\Delta X / \Delta t$, $\Delta Y / \Delta t$) across palm centroids and index finger joints.
-* Directional momentum spikes to distinguish deliberate high-speed swipes from background body shifts, ambient resting jitter, or minor micro-movements using adaptive confidence scoring.
+### 3. Dynamic Kinetic Vector Engine
+Static pose matching (e.g., rigid "fist" or "thumbs up" signs) is insufficient for high-speed, reaction-heavy games. GestureSurfer AI employs a dynamic displacement and velocity calculation engine:
+* Computes temporal velocity vectors ($\Delta X / \Delta t$, $\Delta Y / \Delta t$) across palm centroids and index fingertips.
+* Differentiates deliberate vector bursts (swipes) from ambient resting jitter and micro-movements using adaptive confidence thresholds.
 
-### 4. Low-Latency Input Injection & Non-Blocking Debouncing
-Traditional virtual keystroke simulators often introduce OS input polling delays or double-trigger artifacts. The application integrates direct OS input hooks alongside a thread-safe temporal cooldown manager to eliminate ghost inputs and ensure crisp, single-action triggers per physical gesture.
+### 4. Direct OS Input Injection & Non-Blocking Debouncing
+Traditional virtual keystroke simulations often suffer from system polling delays or key-bounce loops. The application uses direct C-type low-level hooks (`pynput` / DirectInput wrappers) coupled with a thread-safe temporal cooldown manager (`INPUT_COOLDOWN_SEC`) to eliminate ghost inputs and double-triggers.
 
-### 5. Instrumentation & Real-Time Telemetry HUD
-The built-in visualization pipeline projects a transparent Heads-Up Display (HUD) directly over the active video feed. This interface renders live topological joint wireframes, spatial bounding boxes, directional trajectory indicators, and real-time processing FPS metrics for user calibration and system diagnostics.
+### 5. Real-Time Instrumentation & Telemetry HUD
+The integrated rendering engine projects an interactive Heads-Up Display (HUD) directly over the camera feed. This overlay outputs live topological joint wireframes, spatial bounding boxes, directional vector trajectory indicators, and a real-time frame processing latency (FPS) counter for system calibration and debugging.
 
 ---
 
-## Complete Pipeline Processing Flow
+## 🏗️ System Architecture
 
 ```text
-                  PHYSICAL WEBCAM FEED
-                           │
-                           ▼
-             Multi-Threaded Frame Capture
-                  (camera_stream.py)
-                           │
-                           ▼
-             Matrix Preprocessing Engine
-        (Horizontal Mirroring & BGR to RGB)
-                           │
-                           ▼
-             MediaPipe Landmark Engine
-           (21-Point 3D Joint Detection)
-                           │
-                           ▼
-             Kinematic Vector Analytics
-         (Velocity & Direction Calculation)
-                           │
-         ┌─────────────────┴─────────────────┐
-         ▼                                   ▼
-  OS Key Event Dispatcher             Telemetry HUD Rendering
- (Direct Input Key Injection)       (Live Skeleton & Vector Overlay)
+                                  [ PHYSICAL WEBCAM ]
+                                           │
+                                           ▼
+                            ┌──────────────────────────────┐
+                            │ Multi-Threaded Frame Capture │
+                            │    (camera_stream.py)        │
+                            └──────────────┬───────────────┘
+                                           │
+                                           ▼
+                            ┌──────────────────────────────┐
+                            │ Matrix Preprocessing Engine  │
+                            │ (Horizontal Flip & RGB Conversion)
+                            └──────────────┬───────────────┘
+                                           │
+                                           ▼
+                            ┌──────────────────────────────┐
+                            │ MediaPipe Landmark Engine    │
+                            │ (21-Point 3D Joint Tracking) │
+                            └──────────────┬───────────────┘
+                                           │
+                                           ▼
+                            ┌──────────────────────────────┐
+                            │ Kinematic Vector Analytics   │
+                            │ (Velocity & Vector Direction)│
+                            └──────────────┬───────────────┘
+                                           │
+                     ┌─────────────────────┴─────────────────────┐
+                     ▼                                           ▼
+      ┌──────────────────────────────┐            ┌──────────────────────────────┐
+      │ OS Key Event Dispatcher      │            │ Telemetry HUD Rendering      │
+      │ (Low-Latency Input Injection)│            │ (Live Skeleton & Vector GUI) │
+      └──────────────────────────────┘            └──────────────────────────────┘
