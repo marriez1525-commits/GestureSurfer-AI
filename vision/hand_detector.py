@@ -1,7 +1,7 @@
 """
 hand_detector.py
 
-Detects and tracks hands using MediaPipe.
+Real-time MediaPipe hand detection and tracking.
 """
 
 import cv2
@@ -16,79 +16,65 @@ from config import (
 
 
 class HandDetector:
-    """
-    Real-time hand detector for GestureSurfer AI.
-    """
 
     def __init__(self):
 
-        # MediaPipe modules
         self.mp_hands = mp.solutions.hands
         self.mp_drawing = mp.solutions.drawing_utils
 
-        # Create MediaPipe hand model
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
-
             max_num_hands=MAX_NUM_HANDS,
 
+            # Faster model
             model_complexity=0,
 
+            # Detection confidence
             min_detection_confidence=MIN_DETECTION_CONFIDENCE,
 
+            # Tracking confidence
             min_tracking_confidence=MIN_TRACKING_CONFIDENCE,
+
         )
 
         self.landmarks = None
+        self.last_landmarks = None
 
         self.hand_detected = False
 
-        # Keep the last valid landmarks.
-        # This helps when MediaPipe briefly misses a frame.
-        self.last_landmarks = None
-
-        # Number of frames for which we tolerate
-        # a temporary tracking failure.
+        # Number of frames we allow MediaPipe
+        # to temporarily lose the hand.
         self.missed_frames = 0
 
-        self.max_missed_frames = 3
+        self.max_missed_frames = 5
 
     def process(self, frame):
-        """
-        Detect a hand in the camera frame.
-
-        Returns:
-            frame
-            landmarks
-        """
 
         if frame is None:
             return None, None
 
-        # OpenCV uses BGR.
-        # MediaPipe requires RGB.
+        # Convert BGR → RGB
         rgb_frame = cv2.cvtColor(
             frame,
             cv2.COLOR_BGR2RGB
         )
 
-        # Improve performance by telling MediaPipe
-        # that the image will not be modified.
+        # Tell MediaPipe we won't modify the image
         rgb_frame.flags.writeable = False
 
         results = self.hands.process(rgb_frame)
 
         rgb_frame.flags.writeable = True
 
-        # --------------------------------------------------
-        # Hand detected
-        # --------------------------------------------------
+        # ==========================================
+        # HAND FOUND
+        # ==========================================
 
         if results.multi_hand_landmarks:
 
-            hand_landmarks = results.multi_hand_landmarks[0]
+            hand = results.multi_hand_landmarks[0]
 
-            self.landmarks = hand_landmarks.landmark
+            self.landmarks = hand.landmark
 
             self.last_landmarks = self.landmarks
 
@@ -101,15 +87,15 @@ class HandDetector:
 
                 self.mp_drawing.draw_landmarks(
                     frame,
-                    hand_landmarks,
+                    hand,
                     self.mp_hands.HAND_CONNECTIONS
                 )
 
             return frame, self.landmarks
 
-        # --------------------------------------------------
-        # Hand temporarily lost
-        # --------------------------------------------------
+        # ==========================================
+        # TEMPORARY TRACKING LOSS
+        # ==========================================
 
         self.missed_frames += 1
 
@@ -118,16 +104,15 @@ class HandDetector:
             and self.missed_frames <= self.max_missed_frames
         ):
 
-            # Temporarily keep using the previous landmarks.
             self.landmarks = self.last_landmarks
 
             self.hand_detected = True
 
             return frame, self.landmarks
 
-        # --------------------------------------------------
-        # Hand genuinely lost
-        # --------------------------------------------------
+        # ==========================================
+        # HAND REALLY LOST
+        # ==========================================
 
         self.landmarks = None
 
@@ -136,22 +121,13 @@ class HandDetector:
         return frame, None
 
     def get_landmarks(self):
-        """
-        Return current hand landmarks.
-        """
 
         return self.landmarks
 
     def is_hand_detected(self):
-        """
-        Return whether a hand is currently available.
-        """
 
         return self.hand_detected
 
     def close(self):
-        """
-        Close MediaPipe.
-        """
 
         self.hands.close()

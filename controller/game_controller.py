@@ -1,8 +1,13 @@
 """
 game_controller.py
 
-Connects detected game actions with the keyboard controller.
+Converts detected gestures into keyboard actions.
+
+Designed so that one detected gesture produces
+one keyboard press instead of repeated presses.
 """
+
+import time
 
 from controller.keyboard_controller import KeyboardController
 from controller.key_mapper import KeyMapper
@@ -11,10 +16,6 @@ from config import ACTION_NONE
 
 
 class GameController:
-    """
-    Main controller responsible for converting game actions
-    into keyboard input.
-    """
 
     def __init__(self):
 
@@ -24,28 +25,23 @@ class GameController:
 
         self.last_action = ACTION_NONE
 
+        self.last_execution_time = 0
+
+        # Prevent very fast repeated keyboard presses.
+        self.action_interval = 0.35
+
     def execute(self, action):
-        """
-        Execute a game action.
 
-        Example:
+        # ----------------------------------------------
+        # Controller must be enabled
+        # ----------------------------------------------
 
-            LEFT
-              ↓
-            left key
+        if not self.keyboard.is_enabled():
+            return False
 
-            RIGHT
-              ↓
-            right key
-
-            JUMP
-              ↓
-            up key
-
-            ROLL
-              ↓
-            down key
-        """
+        # ----------------------------------------------
+        # Ignore empty actions
+        # ----------------------------------------------
 
         if action is None:
             return False
@@ -53,55 +49,74 @@ class GameController:
         if action == ACTION_NONE:
             return False
 
-        # Find keyboard key
+        current_time = time.time()
+
+        # ----------------------------------------------
+        # Prevent duplicate actions
+        # ----------------------------------------------
+
+        elapsed = (
+            current_time
+            - self.last_execution_time
+        )
+
+        if elapsed < self.action_interval:
+            return False
+
+        # ----------------------------------------------
+        # Convert gesture to keyboard key
+        # ----------------------------------------------
+
         key = self.key_mapper.get_key(action)
 
         if key is None:
             return False
 
-        # Send keyboard input
+        # ----------------------------------------------
+        # Send ONE keyboard press
+        # ----------------------------------------------
+
         success = self.keyboard.press(key)
 
         if success:
+
             self.last_action = action
+
+            self.last_execution_time = current_time
 
         return success
 
     def enable(self):
-        """
-        Enable game control.
-        """
 
         self.keyboard.enable()
 
+        # Reset timing when controller is enabled.
+        self.last_execution_time = 0
+
+        self.last_action = ACTION_NONE
+
     def disable(self):
-        """
-        Disable game control.
-        """
 
         self.keyboard.disable()
 
-        self.keyboard.release_all()
+        self.last_action = ACTION_NONE
+
+        self.last_execution_time = 0
 
     def is_enabled(self):
-        """
-        Check whether game control is enabled.
-        """
 
         return self.keyboard.is_enabled()
 
     def get_last_action(self):
-        """
-        Return the last successfully executed action.
-        """
 
         return self.last_action
 
     def stop(self):
-        """
-        Safely stop the controller.
-        """
 
         self.keyboard.release_all()
 
         self.keyboard.disable()
+
+        self.last_action = ACTION_NONE
+
+        self.last_execution_time = 0
