@@ -8,11 +8,19 @@ Combines:
     MediaPipe hand tracking
     Palm movement detection
     Gesture classification
+    Fist detection
     Keyboard controller
 
 Controls:
     SPACE = Controller ON/OFF
     Q     = Quit
+
+Hand gestures:
+    Swipe LEFT  = Left Arrow
+    Swipe RIGHT = Right Arrow
+    Swipe UP    = Jump
+    Swipe DOWN  = Roll
+    Fist        = Hoverboard
 """
 
 import time
@@ -25,10 +33,14 @@ from vision.hand_detector import HandDetector
 from vision.landmark_tracker import LandmarkTracker
 from vision.motion_tracker import MotionTracker
 from vision.gesture_classifier import GestureClassifier
+from vision.fist_detector import FistDetector
 
 from controller.game_controller import GameController
 
-from config import ACTION_NONE
+from config import (
+    ACTION_NONE,
+    ACTION_HOVERBOARD,
+)
 
 
 def main():
@@ -38,11 +50,19 @@ def main():
     # ======================================================
 
     camera = Camera()
+
     detector = HandDetector()
+
     landmark_tracker = LandmarkTracker()
+
     motion_tracker = MotionTracker()
+
     gesture_classifier = GestureClassifier()
+
+    fist_detector = FistDetector()
+
     game_controller = GameController()
+
     fps_counter = FPSCounter()
 
     # ======================================================
@@ -62,27 +82,35 @@ def main():
     print("=" * 55)
 
     print()
+
     print("Hand Controls:")
     print("    Move LEFT  -> Left Arrow")
     print("    Move RIGHT -> Right Arrow")
     print("    Move UP    -> Up Arrow")
     print("    Move DOWN  -> Down Arrow")
+    print("    FIST       -> Hoverboard")
+
     print()
 
     print("Keyboard Controls:")
     print("    SPACE -> Controller ON/OFF")
     print("    Q     -> Quit")
+
     print()
 
     print("The controller is currently OFF.")
+
     print()
+
     print("Starting camera in 3 seconds...")
 
     time.sleep(3)
 
     print()
+
     print("Camera started.")
     print("Show your hand to the camera.")
+
     print()
 
     # ======================================================
@@ -100,7 +128,9 @@ def main():
             frame = camera.read()
 
             if frame is None:
+
                 print("Could not read camera frame.")
+
                 break
 
             # ------------------------------------------------
@@ -117,28 +147,58 @@ def main():
 
             if landmarks is not None:
 
+                # --------------------------------------------
                 # Update landmark tracker
+                # --------------------------------------------
+
                 landmark_tracker.update(landmarks)
 
+                # --------------------------------------------
                 # Get palm center
+                # --------------------------------------------
+
                 palm_position = (
                     landmark_tracker.get_palm_center()
                 )
 
+                # --------------------------------------------
                 # Detect movement
+                # --------------------------------------------
+
                 movement = motion_tracker.update(
                     palm_position
                 )
 
+                # --------------------------------------------
                 # Convert movement to action
+                # --------------------------------------------
+
                 action = gesture_classifier.classify(
                     movement
                 )
 
-                # Send keyboard action
-                if controller_enabled and action != ACTION_NONE:
+                # --------------------------------------------
+                # FIST = HOVERBOARD
+                # --------------------------------------------
 
-                    game_controller.execute(action)
+                if fist_detector.just_made_fist(
+                    landmarks
+                ):
+
+                    action = ACTION_HOVERBOARD
+
+                # --------------------------------------------
+                # Send keyboard action
+                # --------------------------------------------
+
+                if (
+                    controller_enabled
+                    and action != ACTION_NONE
+                ):
+
+                    game_controller.execute(
+                        action
+                    )
 
             # ------------------------------------------------
             # HAND NOT FOUND
@@ -147,6 +207,8 @@ def main():
             else:
 
                 gesture_classifier.reset()
+
+                fist_detector.reset()
 
             # ==================================================
             # GET FPS
@@ -286,8 +348,18 @@ def main():
 
             cv2.putText(
                 frame,
-                "Q = QUIT",
+                "FIST = HOVERBOARD",
                 (20, 290),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                "Q = QUIT",
+                (20, 320),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
                 (255, 255, 255),
@@ -327,6 +399,7 @@ def main():
                     print("=" * 40)
                     print("CONTROLLER ENABLED")
                     print("Hand movements control the keyboard.")
+                    print("FIST activates the hoverboard.")
                     print("=" * 40)
 
                 else:
@@ -334,6 +407,8 @@ def main():
                     game_controller.disable()
 
                     motion_tracker.reset()
+
+                    fist_detector.reset()
 
                     print()
                     print("=" * 40)
@@ -348,6 +423,7 @@ def main():
             elif key == ord("q"):
 
                 print("Q pressed. Exiting...")
+
                 break
 
     except KeyboardInterrupt:
