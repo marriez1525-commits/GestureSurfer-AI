@@ -1,7 +1,7 @@
 """
 gesture_classifier.py
 
-Converts detected hand movement into game actions.
+Converts movement information into game actions.
 """
 
 from config import (
@@ -14,52 +14,35 @@ from config import (
 
 
 class GestureClassifier:
-    """
-    Converts movement information into a readable
-    Subway Surfers action.
-    """
 
     def __init__(self):
-        self.current_action = ACTION_NONE
+
+        self.last_action = ACTION_NONE
 
     def classify(self, movement):
-        """
-        Convert movement direction into a game action.
 
-        Args:
-            movement: Movement/action detected by MotionTracker.
+        if movement is None:
+            return ACTION_NONE
 
-        Returns:
-            Game action.
-        """
+        valid_actions = (
+            ACTION_LEFT,
+            ACTION_RIGHT,
+            ACTION_JUMP,
+            ACTION_ROLL,
+        )
 
-        if movement == ACTION_LEFT:
-            self.current_action = ACTION_LEFT
+        if movement in valid_actions:
 
-        elif movement == ACTION_RIGHT:
-            self.current_action = ACTION_RIGHT
+            self.last_action = movement
 
-        elif movement == ACTION_JUMP:
-            self.current_action = ACTION_JUMP
+            return movement
 
-        elif movement == ACTION_ROLL:
-            self.current_action = ACTION_ROLL
-
-        else:
-            self.current_action = ACTION_NONE
-
-        return self.current_action
-
-    def get_action(self):
-        """
-        Return the most recently detected action.
-        """
-
-        return self.current_action
+        return ACTION_NONE
 
     def reset(self):
-        """
-        Reset the classifier.
-        """
 
-        self.current_action = ACTION_NONE
+        self.last_action = ACTION_NONE
+
+    def get_last_action(self):
+
+        return self.last_action

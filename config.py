@@ -28,10 +28,10 @@ SHOW_CAMERA = True
 MAX_NUM_HANDS = 1
 
 # Minimum confidence required to detect a hand
-MIN_DETECTION_CONFIDENCE = 0.6
+MIN_DETECTION_CONFIDENCE = 0.5
 
 # Minimum confidence required to track a detected hand
-MIN_TRACKING_CONFIDENCE = 0.5
+MIN_TRACKING_CONFIDENCE = 0.45
 
 
 # ============================================================
@@ -44,14 +44,14 @@ HORIZONTAL_THRESHOLD = 40
 
 # Minimum vertical movement required
 # before we consider it an UP or DOWN gesture.
-VERTICAL_THRESHOLD = 40
+VERTICAL_THRESHOLD = 30
 
 # Number of frames used for movement smoothing
 SMOOTHING_FRAMES = 5
 
 # Time in seconds before another game action
 # can be triggered.
-GESTURE_COOLDOWN = 0.40
+GESTURE_COOLDOWN = 0.30
 
 
 # ============================================================

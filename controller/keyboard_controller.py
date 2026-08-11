@@ -1,57 +1,41 @@
 """
 keyboard_controller.py
 
-Sends keyboard input to the operating system.
-
-The game does not need to know that the input came
-from a hand gesture.
+Sends keyboard input without unnecessarily slowing
+down the vision/tracking loop.
 """
-
-import time
 
 import pyautogui
 
 
 class KeyboardController:
-    """
-    Controls keyboard input for GestureSurfer AI.
-    """
 
     def __init__(self):
 
         self.enabled = True
 
-        # Small delay between repeated actions
-        self.action_delay = 0.05
+        # Safety setting
+        pyautogui.PAUSE = 0
+
+        # Prevent PyAutoGUI from triggering its
+        # fail-safe unexpectedly during gameplay.
+        pyautogui.FAILSAFE = True
 
     def enable(self):
-        """
-        Enable keyboard control.
-        """
 
         self.enabled = True
 
     def disable(self):
-        """
-        Disable keyboard control.
-        """
 
         self.enabled = False
 
+        self.release_all()
+
     def is_enabled(self):
-        """
-        Check whether keyboard control is enabled.
-        """
 
         return self.enabled
 
     def press(self, key):
-        """
-        Press and release a keyboard key.
-
-        Args:
-            key: Keyboard key name.
-        """
 
         if not self.enabled:
             return False
@@ -61,9 +45,10 @@ class KeyboardController:
 
         try:
 
-            pyautogui.press(key)
-
-            time.sleep(self.action_delay)
+            pyautogui.press(
+                key,
+                _pause=False
+            )
 
             return True
 
@@ -75,10 +60,7 @@ class KeyboardController:
 
             return False
 
-    def hold(self, key, duration=0.1):
-        """
-        Hold a key for a short amount of time.
-        """
+    def hold(self, key, duration=0.05):
 
         if not self.enabled:
             return False
@@ -90,7 +72,8 @@ class KeyboardController:
 
             pyautogui.keyDown(key)
 
-            time.sleep(duration)
+            # We intentionally don't add a long sleep here.
+            # The vision loop must remain responsive.
 
             pyautogui.keyUp(key)
 
@@ -105,11 +88,6 @@ class KeyboardController:
             return False
 
     def release_all(self):
-        """
-        Release common movement keys.
-
-        Useful when stopping the controller.
-        """
 
         keys = [
             "left",
@@ -121,7 +99,9 @@ class KeyboardController:
         for key in keys:
 
             try:
+
                 pyautogui.keyUp(key)
 
             except Exception:
-                pass
+
+                pass    
