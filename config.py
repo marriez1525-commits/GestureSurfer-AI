@@ -59,9 +59,15 @@ GESTURE_COOLDOWN = 0.30
 # ============================================================
 
 ACTION_LEFT = "LEFT"
+
 ACTION_RIGHT = "RIGHT"
+
 ACTION_JUMP = "JUMP"
+
 ACTION_ROLL = "ROLL"
+
+ACTION_HOVERBOARD = "HOVERBOARD"
+
 ACTION_NONE = "NONE"
 
 
@@ -69,13 +75,16 @@ ACTION_NONE = "NONE"
 # KEYBOARD MAPPING
 # ============================================================
 
-# These are the keyboard keys that will eventually
-# be sent to Subway Surfers.
-
 KEY_LEFT = "left"
+
 KEY_RIGHT = "right"
+
 KEY_JUMP = "up"
+
 KEY_ROLL = "down"
+
+# Hoverboard key
+KEY_HOVERBOARD = "space"
 
 
 # ============================================================
@@ -90,7 +99,6 @@ CALIBRATION_TIME = 3
 # DISPLAY / UI
 # ============================================================
 
-# Window title
 WINDOW_TITLE = "GestureSurfer AI"
 
 # Show hand landmarks on camera
