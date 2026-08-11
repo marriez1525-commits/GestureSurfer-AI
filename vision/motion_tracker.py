@@ -1,18 +1,16 @@
 """
 motion_tracker.py
 
-GestureSurfer AI gesture detection.
+One physical swipe = one game action.
 
-Important behavior:
+After an action is detected, the tracker enters
+RECOVERY mode.
 
-ONE swipe = ONE action.
+During recovery, movement in the opposite direction
+is ignored.
 
-After a gesture is detected, the tracker locks.
-The hand can move back to its original position
-without creating an opposite gesture.
-
-The tracker unlocks only after the hand returns
-close to the neutral position.
+The tracker becomes ready again only after the hand
+returns close to the neutral position.
 """
 
 import time
@@ -20,12 +18,12 @@ import time
 from config import (
     HORIZONTAL_THRESHOLD,
     VERTICAL_THRESHOLD,
+    GESTURE_COOLDOWN,
     ACTION_LEFT,
     ACTION_RIGHT,
     ACTION_JUMP,
     ACTION_ROLL,
     ACTION_NONE,
-    GESTURE_COOLDOWN,
 )
 
 from vision.smoothing import MovementSmoother
@@ -35,58 +33,37 @@ class MotionTracker:
 
     def __init__(self):
 
-        # ------------------------------------------
-        # Smoothing
-        # ------------------------------------------
-
         self.smoother = MovementSmoother(
             max_points=3
         )
 
-        # ------------------------------------------
-        # Neutral position
-        # ------------------------------------------
+        # Neutral hand position
+        self.neutral_x = None
+        self.neutral_y = None
 
-        self.neutral_position = None
-
-        # ------------------------------------------
-        # Movement values
-        # ------------------------------------------
-
+        # Current movement
         self.delta_x = 0.0
         self.delta_y = 0.0
 
-        # ------------------------------------------
-        # Action
-        # ------------------------------------------
-
+        # Last action
         self.last_action = ACTION_NONE
-        self.last_action_time = 0
+        self.last_action_time = 0.0
 
-        # ------------------------------------------
-        # Gesture lock
-        # ------------------------------------------
+        # ---------------------------------------------
+        # Recovery lock
+        # ---------------------------------------------
 
-        self.gesture_locked = False
+        self.locked = False
 
-        # ------------------------------------------
-        # Recovery
-        # ------------------------------------------
-
-        # How close the hand must return to the
-        # neutral position before another gesture
-        # can be detected.
+        # Distance required to return to neutral
         self.recovery_threshold = 0.035
 
-        # ------------------------------------------
-        # Action display
-        # ------------------------------------------
-
+        # How long action stays visible
         self.action_display_time = 0.20
 
-    # ==================================================
+    # =================================================
     # UPDATE
-    # ==================================================
+    # =================================================
 
     def update(self, position):
 
@@ -96,9 +73,9 @@ class MotionTracker:
 
         x, y = position
 
-        # ------------------------------------------
-        # Smooth position
-        # ------------------------------------------
+        # ---------------------------------------------
+        # Smooth hand position
+        # ---------------------------------------------
 
         self.smoother.update(x, y)
 
@@ -112,38 +89,33 @@ class MotionTracker:
 
         current_x, current_y = smoothed
 
-        # ------------------------------------------
-        # Establish neutral position
-        # ------------------------------------------
+        # ---------------------------------------------
+        # First position = neutral
+        # ---------------------------------------------
 
-        if self.neutral_position is None:
+        if self.neutral_x is None:
 
-            self.neutral_position = (
-                current_x,
-                current_y
-            )
+            self.neutral_x = current_x
+            self.neutral_y = current_y
 
             return ACTION_NONE
 
-        neutral_x, neutral_y = (
-            self.neutral_position
-        )
-
-        # ------------------------------------------
-        # Calculate displacement from neutral
-        # ------------------------------------------
+        # ---------------------------------------------
+        # Movement from neutral
+        # ---------------------------------------------
 
         self.delta_x = (
-            current_x - neutral_x
+            current_x - self.neutral_x
         )
 
         self.delta_y = (
-            current_y - neutral_y
+            current_y - self.neutral_y
         )
 
         horizontal = abs(self.delta_x)
         vertical = abs(self.delta_y)
 
+        # Convert config values to normalized values
         horizontal_threshold = (
             HORIZONTAL_THRESHOLD / 1000.0
         )
@@ -152,57 +124,43 @@ class MotionTracker:
             VERTICAL_THRESHOLD / 1000.0
         )
 
-        # ==================================================
-        # LOCKED STATE
-        # ==================================================
+        # =================================================
+        # RECOVERY / LOCKED MODE
+        # =================================================
 
-        if self.gesture_locked:
+        if self.locked:
 
-            distance_from_neutral = (
-                (self.delta_x ** 2)
+            distance = (
+                self.delta_x ** 2
                 +
-                (self.delta_y ** 2)
+                self.delta_y ** 2
             ) ** 0.5
 
-            # ------------------------------------------
-            # Hand has returned close enough to neutral
-            # ------------------------------------------
+            # ---------------------------------------------
+            # Hand returned to neutral
+            # ---------------------------------------------
 
-            if (
-                distance_from_neutral
-                <= self.recovery_threshold
-            ):
+            if distance <= self.recovery_threshold:
 
-                self.gesture_locked = False
+                self.locked = False
+
+                self.neutral_x = current_x
+                self.neutral_y = current_y
 
                 self.delta_x = 0.0
                 self.delta_y = 0.0
 
-                # New neutral position
-                self.neutral_position = (
-                    current_x,
-                    current_y
-                )
-
+            # ---------------------------------------------
             # IMPORTANT:
             #
-            # While locked, movement is ignored.
-            #
-            # Therefore:
-            #
-            # LEFT → return RIGHT
-            #
-            # does NOT create RIGHT.
-            #
-            # JUMP → move DOWN
-            #
-            # does NOT create ROLL.
+            # Ignore ALL movement while recovering.
+            # ---------------------------------------------
 
             return self.get_current_action()
 
-        # ==================================================
+        # =================================================
         # COOLDOWN
-        # ==================================================
+        # =================================================
 
         current_time = time.time()
 
@@ -213,9 +171,9 @@ class MotionTracker:
 
             return self.get_current_action()
 
-        # ==================================================
+        # =================================================
         # HORIZONTAL GESTURE
-        # ==================================================
+        # =================================================
 
         if (
             horizontal >= horizontal_threshold
@@ -234,9 +192,9 @@ class MotionTracker:
 
             return action
 
-        # ==================================================
+        # =================================================
         # VERTICAL GESTURE
-        # ==================================================
+        # =================================================
 
         if (
             vertical >= vertical_threshold
@@ -257,9 +215,9 @@ class MotionTracker:
 
         return self.get_current_action()
 
-    # ==================================================
+    # =================================================
     # TRIGGER ACTION
-    # ==================================================
+    # =================================================
 
     def trigger_action(self, action):
 
@@ -267,12 +225,12 @@ class MotionTracker:
 
         self.last_action_time = time.time()
 
-        # Lock until hand returns to neutral.
-        self.gesture_locked = True
+        # LOCK immediately after one gesture
+        self.locked = True
 
-    # ==================================================
-    # CURRENT ACTION
-    # ==================================================
+    # =================================================
+    # DISPLAY ACTION
+    # =================================================
 
     def get_current_action(self):
 
@@ -291,9 +249,9 @@ class MotionTracker:
 
         return ACTION_NONE
 
-    # ==================================================
-    # CURRENT POSITION
-    # ==================================================
+    # =================================================
+    # POSITION
+    # =================================================
 
     def get_current_position(self):
 
@@ -301,9 +259,9 @@ class MotionTracker:
             self.smoother.get_smoothed_position()
         )
 
-    # ==================================================
+    # =================================================
     # DELTA
-    # ==================================================
+    # =================================================
 
     def get_delta(self):
 
@@ -312,21 +270,22 @@ class MotionTracker:
             self.delta_y
         )
 
-    # ==================================================
+    # =================================================
     # RESET
-    # ==================================================
+    # =================================================
 
     def reset(self):
 
         self.smoother.reset()
 
-        self.neutral_position = None
+        self.neutral_x = None
+        self.neutral_y = None
 
         self.delta_x = 0.0
         self.delta_y = 0.0
 
         self.last_action = ACTION_NONE
 
-        self.last_action_time = 0
+        self.last_action_time = 0.0
 
-        self.gesture_locked = False
+        self.locked = False
