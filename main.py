@@ -4,23 +4,23 @@ main.py
 GestureSurfer AI
 
 Combines:
-    Webcam
-    MediaPipe hand tracking
-    Palm movement detection
-    Gesture classification
-    Fist detection
-    Keyboard controller
+Webcam
+MediaPipe hand tracking
+Palm movement detection
+Gesture classification
+Fist detection
+Keyboard controller
 
 Controls:
-    SPACE = Controller ON/OFF
-    Q     = Quit
+F8    = Controller ON/OFF
+Q     = Quit
 
 Hand gestures:
-    Swipe LEFT  = Left Arrow
-    Swipe RIGHT = Right Arrow
-    Swipe UP    = Jump
-    Swipe DOWN  = Roll
-    Fist        = Hoverboard
+Swipe LEFT  = Left Arrow
+Swipe RIGHT = Right Arrow
+Swipe UP    = Jump
+Swipe DOWN  = Roll
+Fist        = Hoverboard / Space
 """
 
 import time
@@ -66,20 +66,20 @@ def main():
     fps_counter = FPSCounter()
 
     # ======================================================
-    # CONTROLLER STARTS OFF
+    # CONTROLLER STARTS ON
     # ======================================================
 
-    controller_enabled = False
+    controller_enabled = True
 
-    game_controller.disable()
+    game_controller.enable()
 
     # ======================================================
-    # STARTUP MESSAGE
+    # STARTUP
     # ======================================================
 
-    print("=" * 55)
-    print("              GESTURESURFER AI")
-    print("=" * 55)
+    print("=" * 60)
+    print("                 GESTURESURFER AI")
+    print("=" * 60)
 
     print()
 
@@ -88,17 +88,17 @@ def main():
     print("    Move RIGHT -> Right Arrow")
     print("    Move UP    -> Up Arrow")
     print("    Move DOWN  -> Down Arrow")
-    print("    FIST       -> Hoverboard")
+    print("    FIST       -> Hoverboard / Space")
 
     print()
 
     print("Keyboard Controls:")
-    print("    SPACE -> Controller ON/OFF")
-    print("    Q     -> Quit")
+    print("    F8 -> Controller ON/OFF")
+    print("    Q  -> Quit")
 
     print()
 
-    print("The controller is currently OFF.")
+    print("The controller is currently ON.")
 
     print()
 
@@ -139,6 +139,8 @@ def main():
 
             frame, landmarks = detector.process(frame)
 
+            # Default action
+
             action = ACTION_NONE
 
             # ------------------------------------------------
@@ -154,7 +156,7 @@ def main():
                 landmark_tracker.update(landmarks)
 
                 # --------------------------------------------
-                # Get palm center
+                # Get palm position
                 # --------------------------------------------
 
                 palm_position = (
@@ -170,7 +172,7 @@ def main():
                 )
 
                 # --------------------------------------------
-                # Convert movement to action
+                # Convert movement into action
                 # --------------------------------------------
 
                 action = gesture_classifier.classify(
@@ -188,7 +190,7 @@ def main():
                     action = ACTION_HOVERBOARD
 
                 # --------------------------------------------
-                # Send keyboard action
+                # SEND KEYBOARD ACTION
                 # --------------------------------------------
 
                 if (
@@ -196,9 +198,16 @@ def main():
                     and action != ACTION_NONE
                 ):
 
-                    game_controller.execute(
+                    success = game_controller.execute(
                         action
                     )
+
+                    # Debug information
+                    if success:
+
+                        print(
+                            f"Action executed: {action}"
+                        )
 
             # ------------------------------------------------
             # HAND NOT FOUND
@@ -211,13 +220,13 @@ def main():
                 fist_detector.reset()
 
             # ==================================================
-            # GET FPS
+            # FPS
             # ==================================================
 
             fps = fps_counter.update()
 
             # ==================================================
-            # GET MOVEMENT DEBUG VALUES
+            # MOVEMENT VALUES
             # ==================================================
 
             delta_x, delta_y = (
@@ -239,7 +248,7 @@ def main():
             )
 
             # ==================================================
-            # DISPLAY HAND STATUS
+            # HAND STATUS
             # ==================================================
 
             if detector.is_hand_detected():
@@ -267,7 +276,7 @@ def main():
                 )
 
             # ==================================================
-            # DISPLAY MOVEMENT VALUES
+            # DX
             # ==================================================
 
             cv2.putText(
@@ -280,6 +289,10 @@ def main():
                 2
             )
 
+            # ==================================================
+            # DY
+            # ==================================================
+
             cv2.putText(
                 frame,
                 f"DY: {delta_y:.3f}",
@@ -291,7 +304,7 @@ def main():
             )
 
             # ==================================================
-            # DISPLAY ACTION
+            # ACTION
             # ==================================================
 
             cv2.putText(
@@ -305,7 +318,7 @@ def main():
             )
 
             # ==================================================
-            # DISPLAY CONTROLLER STATUS
+            # CONTROLLER STATUS
             # ==================================================
 
             if controller_enabled:
@@ -333,12 +346,12 @@ def main():
                 )
 
             # ==================================================
-            # DISPLAY INSTRUCTIONS
+            # INSTRUCTIONS
             # ==================================================
 
             cv2.putText(
                 frame,
-                "SPACE = ON/OFF",
+                "F8 = ON/OFF",
                 (20, 260),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
@@ -382,10 +395,14 @@ def main():
             key = cv2.waitKey(1) & 0xFF
 
             # ------------------------------------------------
-            # SPACE = TOGGLE CONTROLLER
+            # F8 = TOGGLE CONTROLLER
+            #
+            # IMPORTANT:
+            # We no longer use SPACE here.
+            # SPACE is reserved for Subway Surfers.
             # ------------------------------------------------
 
-            if key == ord(" "):
+            if key == 0x77:
 
                 controller_enabled = (
                     not controller_enabled
@@ -396,11 +413,11 @@ def main():
                     game_controller.enable()
 
                     print()
-                    print("=" * 40)
+                    print("=" * 45)
                     print("CONTROLLER ENABLED")
-                    print("Hand movements control the keyboard.")
-                    print("FIST activates the hoverboard.")
-                    print("=" * 40)
+                    print("Hand movements control the game.")
+                    print("Fist activates hoverboard.")
+                    print("=" * 45)
 
                 else:
 
@@ -411,10 +428,10 @@ def main():
                     fist_detector.reset()
 
                     print()
-                    print("=" * 40)
+                    print("=" * 45)
                     print("CONTROLLER DISABLED")
-                    print("Hand movements do not control keyboard.")
-                    print("=" * 40)
+                    print("Keyboard control stopped.")
+                    print("=" * 45)
 
             # ------------------------------------------------
             # Q = QUIT
@@ -422,6 +439,7 @@ def main():
 
             elif key == ord("q"):
 
+                print()
                 print("Q pressed. Exiting...")
 
                 break
