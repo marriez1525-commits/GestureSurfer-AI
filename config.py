@@ -40,14 +40,14 @@ MIN_TRACKING_CONFIDENCE = 0.45
 
 # Minimum horizontal movement required
 # before we consider it a LEFT or RIGHT gesture.
-HORIZONTAL_THRESHOLD = 40
+HORIZONTAL_THRESHOLD = 35
 
 # Minimum vertical movement required
 # before we consider it an UP or DOWN gesture.
-VERTICAL_THRESHOLD = 30
+VERTICAL_THRESHOLD = 25
 
 # Number of frames used for movement smoothing
-SMOOTHING_FRAMES = 5
+SMOOTHING_FRAMES = 3
 
 # Time in seconds before another game action
 # can be triggered.
