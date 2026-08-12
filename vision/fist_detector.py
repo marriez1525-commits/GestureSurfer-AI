@@ -1,8 +1,14 @@
 """
 fist_detector.py
 
-Detects whether the hand is closed into a fist.
+Detects a fist and triggers HOVERBOARD only once.
+
+A fist must be opened before another fist
+can trigger the hoverboard again.
 """
+
+from config import ACTION_HOVERBOARD
+
 
 class FistDetector:
 
@@ -10,47 +16,89 @@ class FistDetector:
 
         self.was_fist = False
 
-    def is_fist(self, landmarks):
+        # Number of extended fingers required
+        # to consider the hand NOT a fist.
+        self.minimum_open_fingers = 2
+
+    # =====================================================
+    # FINGER CHECK
+    # =====================================================
+
+    def _is_fist(self, landmarks):
 
         if landmarks is None:
-            self.was_fist = False
             return False
 
-        # Finger tip landmark indices
-        tips = [8, 12, 16, 20]
+        if len(landmarks) < 21:
+            return False
 
-        # Finger middle joint indices
-        pips = [6, 10, 14, 18]
+        # -------------------------------------------------
+        # Finger tip and PIP positions
+        # -------------------------------------------------
 
-        folded = 0
+        fingers = [
+            (8, 6),    # index
+            (12, 10),  # middle
+            (16, 14),  # ring
+            (20, 18),  # pinky
+        ]
 
-        for tip, pip in zip(tips, pips):
+        extended = 0
 
-            # For a fist, fingertips are lower than
-            # their middle joints in image coordinates.
-            if landmarks[tip].y > landmarks[pip].y:
+        for tip_id, pip_id in fingers:
 
-                folded += 1
+            tip = landmarks[tip_id]
+            pip = landmarks[pip_id]
 
-        # Four folded fingers = fist
-        fist = folded >= 4
+            # Finger extended when tip is above PIP
+            if tip.y < pip.y:
 
-        return fist
+                extended += 1
+
+        # -------------------------------------------------
+        # Fist
+        # -------------------------------------------------
+
+        return (
+            extended < self.minimum_open_fingers
+        )
+
+    # =====================================================
+    # JUST MADE FIST
+    # =====================================================
 
     def just_made_fist(self, landmarks):
 
-        fist = self.is_fist(landmarks)
-
-        # Trigger only when changing from
-        # open hand -> fist.
-        just_made = (
-            fist
-            and not self.was_fist
+        current_is_fist = (
+            self._is_fist(landmarks)
         )
 
-        self.was_fist = fist
+        # -----------------------------------------------
+        # New fist
+        # -----------------------------------------------
 
-        return just_made
+        if (
+            current_is_fist
+            and not self.was_fist
+        ):
+
+            self.was_fist = True
+
+            return True
+
+        # -----------------------------------------------
+        # Hand opened again
+        # -----------------------------------------------
+
+        if not current_is_fist:
+
+            self.was_fist = False
+
+        return False
+
+    # =====================================================
+    # RESET
+    # =====================================================
 
     def reset(self):
 

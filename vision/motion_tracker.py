@@ -1,19 +1,22 @@
 """
 motion_tracker.py
 
-Fast gesture detection for GestureSurfer AI.
+Fast swipe-based gesture tracker for GestureSurfer AI.
 
-Features:
-- Fast response
-- One swipe = one action
-- Prevents duplicate actions
-- Prevents return movement from becoming
-  the opposite gesture
-- Automatically re-arms after hand returns
-  to the neutral zone
+Gestures:
+    Swipe LEFT  -> LEFT
+    Swipe RIGHT -> RIGHT
+    Swipe UP    -> JUMP
+    Swipe DOWN  -> ROLL
+
+The tracker detects the direction of the hand's recent movement
+instead of treating the return movement as a new gesture.
+
+One physical swipe produces one action.
 """
 
 import time
+from collections import deque
 
 from config import (
     HORIZONTAL_THRESHOLD,
@@ -25,154 +28,147 @@ from config import (
     ACTION_NONE,
 )
 
-from vision.smoothing import MovementSmoother
-
 
 class MotionTracker:
 
     def __init__(self):
 
-        # Small amount of smoothing so gestures
-        # remain responsive.
-        self.smoother = MovementSmoother(
-            max_points=2
-        )
+        # -------------------------------------------------
+        # Recent palm positions
+        # -------------------------------------------------
 
-        # Current reference position
-        self.start_x = None
-        self.start_y = None
+        self.positions = deque(maxlen=5)
 
+        # -------------------------------------------------
         # Current movement
+        # -------------------------------------------------
+
         self.delta_x = 0.0
         self.delta_y = 0.0
 
-        # Last action
+        # -------------------------------------------------
+        # Last detected action
+        # -------------------------------------------------
+
         self.last_action = ACTION_NONE
         self.last_action_time = 0.0
 
-        # ------------------------------------------------
-        # Gesture state
-        # ------------------------------------------------
+        # -------------------------------------------------
+        # Prevent duplicate detection
+        # -------------------------------------------------
 
         self.locked = False
 
-        # ------------------------------------------------
-        # Neutral zone
-        #
-        # Hand must come reasonably close to the
-        # starting position before another gesture
-        # is allowed.
-        # ------------------------------------------------
-
-        self.neutral_threshold = 0.055
-
-        # ------------------------------------------------
-        # Minimum time between actions
-        # ------------------------------------------------
+        # -------------------------------------------------
+        # Timing
+        # -------------------------------------------------
 
         self.cooldown = 0.10
 
-        # ------------------------------------------------
-        # Action display time
-        # ------------------------------------------------
+        self.action_display_time = 0.16
 
-        self.action_display_time = 0.15
+        # -------------------------------------------------
+        # Minimum movement required
+        # -------------------------------------------------
 
-    # ====================================================
+        self.horizontal_threshold = (
+            HORIZONTAL_THRESHOLD / 1000.0
+        )
+
+        self.vertical_threshold = (
+            VERTICAL_THRESHOLD / 1000.0
+        )
+
+        # -------------------------------------------------
+        # Minimum movement between frames
+        # -------------------------------------------------
+
+        self.motion_threshold = 0.008
+
+        # -------------------------------------------------
+        # How much the hand must slow down before
+        # another gesture can be detected.
+        # -------------------------------------------------
+
+        self.rearm_threshold = 0.012
+
+    # =====================================================
     # UPDATE
-    # ====================================================
+    # =====================================================
 
     def update(self, position):
 
         if position is None:
 
-            return self.get_current_action()
+            return ACTION_NONE
 
-        x, y = position
+        current_x, current_y = position
 
-        # ------------------------------------------------
-        # Smooth position
-        # ------------------------------------------------
+        # -------------------------------------------------
+        # Store current position
+        # -------------------------------------------------
 
-        self.smoother.update(x, y)
-
-        smoothed = (
-            self.smoother.get_smoothed_position()
+        self.positions.append(
+            (current_x, current_y)
         )
 
-        if smoothed is None:
-
-            return self.get_current_action()
-
-        current_x, current_y = smoothed
-
-        # ------------------------------------------------
-        # First detected position
-        # ------------------------------------------------
-
-        if self.start_x is None:
-
-            self.start_x = current_x
-            self.start_y = current_y
+        # Need enough positions to calculate movement
+        if len(self.positions) < 2:
 
             return ACTION_NONE
 
-        # ------------------------------------------------
-        # Calculate movement
-        # ------------------------------------------------
+        # -------------------------------------------------
+        # Calculate movement between recent positions
+        # -------------------------------------------------
+
+        previous_x, previous_y = self.positions[-2]
 
         self.delta_x = (
-            current_x - self.start_x
+            current_x - previous_x
         )
 
         self.delta_y = (
-            current_y - self.start_y
+            current_y - previous_y
         )
+
+        # -------------------------------------------------
+        # Movement magnitude
+        # -------------------------------------------------
 
         horizontal = abs(self.delta_x)
         vertical = abs(self.delta_y)
 
-        # Config thresholds
-        horizontal_threshold = (
-            HORIZONTAL_THRESHOLD / 1000.0
-        )
-
-        vertical_threshold = (
-            VERTICAL_THRESHOLD / 1000.0
-        )
-
         # =================================================
-        # LOCKED / RECOVERY STATE
+        # LOCKED
         # =================================================
 
         if self.locked:
 
-            distance = (
-                self.delta_x ** 2
-                +
-                self.delta_y ** 2
-            ) ** 0.5
+            # Wait until the hand movement becomes small.
+            #
+            # IMPORTANT:
+            # We do NOT require the hand to return to
+            # the original position.
+            #
+            # This prevents:
+            #
+            # LEFT -> return movement -> RIGHT
+            #
+            # and:
+            #
+            # JUMP -> hand comes down -> ROLL
 
-            # ---------------------------------------------
-            # Hand has returned near neutral
-            # ---------------------------------------------
-
-            if distance <= self.neutral_threshold:
+            if (
+                horizontal < self.rearm_threshold
+                and vertical < self.rearm_threshold
+            ):
 
                 self.locked = False
 
-                # Start a fresh movement reference
-                self.start_x = current_x
-                self.start_y = current_y
-
-                self.delta_x = 0.0
-                self.delta_y = 0.0
-
-            # Ignore ALL movement while locked.
             return self.get_current_action()
 
         # =================================================
-        # ACTION COOLDOWN
+        # COOLDOWN
         # =================================================
 
         current_time = time.time()
@@ -185,11 +181,22 @@ class MotionTracker:
             return self.get_current_action()
 
         # =================================================
+        # IGNORE VERY SMALL MOVEMENT
+        # =================================================
+
+        if (
+            horizontal < self.motion_threshold
+            and vertical < self.motion_threshold
+        ):
+
+            return self.get_current_action()
+
+        # =================================================
         # HORIZONTAL SWIPE
         # =================================================
 
         if (
-            horizontal >= horizontal_threshold
+            horizontal >= self.horizontal_threshold
             and horizontal > vertical
         ):
 
@@ -210,7 +217,7 @@ class MotionTracker:
         # =================================================
 
         if (
-            vertical >= vertical_threshold
+            vertical >= self.vertical_threshold
             and vertical > horizontal
         ):
 
@@ -228,9 +235,9 @@ class MotionTracker:
 
         return self.get_current_action()
 
-    # ====================================================
+    # =====================================================
     # TRIGGER ACTION
-    # ====================================================
+    # =====================================================
 
     def trigger_action(self, action):
 
@@ -238,18 +245,12 @@ class MotionTracker:
 
         self.last_action_time = time.time()
 
-        # Immediately lock.
-        #
-        # This is the main protection against:
-        #
-        # RIGHT → RIGHT
-        #
-        # from one physical swipe.
+        # Lock immediately.
         self.locked = True
 
-    # ====================================================
+    # =====================================================
     # DISPLAY ACTION
-    # ====================================================
+    # =====================================================
 
     def get_current_action(self):
 
@@ -262,25 +263,27 @@ class MotionTracker:
             - self.last_action_time
         )
 
-        if elapsed < self.action_display_time:
+        if elapsed <= self.action_display_time:
 
             return self.last_action
 
         return ACTION_NONE
 
-    # ====================================================
+    # =====================================================
     # CURRENT POSITION
-    # ====================================================
+    # =====================================================
 
     def get_current_position(self):
 
-        return (
-            self.smoother.get_smoothed_position()
-        )
+        if not self.positions:
 
-    # ====================================================
-    # DELTA
-    # ====================================================
+            return None
+
+        return self.positions[-1]
+
+    # =====================================================
+    # CURRENT MOVEMENT
+    # =====================================================
 
     def get_delta(self):
 
@@ -289,16 +292,13 @@ class MotionTracker:
             self.delta_y
         )
 
-    # ====================================================
+    # =====================================================
     # RESET
-    # ====================================================
+    # =====================================================
 
     def reset(self):
 
-        self.smoother.reset()
-
-        self.start_x = None
-        self.start_y = None
+        self.positions.clear()
 
         self.delta_x = 0.0
         self.delta_y = 0.0
