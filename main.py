@@ -4,15 +4,14 @@ main.py
 GestureSurfer AI
 
 Features:
-- Automatically launches Subway Surfers
-- Automatically starts webcam
-- Camera appears as a top-right overlay
-- Camera stays above the game
-- Game remains the keyboard target
-- LEFT / RIGHT / JUMP / ROLL gestures
+- Starts camera immediately
+- Launches Subway Surfers automatically
+- Maximizes Subway Surfers
+- Places camera in top-right corner
+- Keeps camera above the game
+- Gestures control Subway Surfers
 - Fist = Hoverboard
-- Pinch = Continue / Resume
-- Q = Quit
+- Pinch = Continue
 """
 
 import ctypes
@@ -42,7 +41,7 @@ from config import (
 
 
 # ============================================================
-# CAMERA WINDOW SETTINGS
+# CAMERA WINDOW
 # ============================================================
 
 CAMERA_WINDOW = "GestureSurfer AI"
@@ -55,14 +54,20 @@ CAMERA_MARGIN = 15
 
 
 # ============================================================
-# WINDOWS KEY CODES
+# WINDOWS CONSTANTS
 # ============================================================
 
-VK_Q = 0x51
+HWND_TOPMOST = -1
+
+SWP_NOACTIVATE = 0x0010
+
+SWP_SHOWWINDOW = 0x0040
+
+SW_SHOWNOACTIVATE = 4
 
 
 # ============================================================
-# POSITION CAMERA OVERLAY
+# POSITION CAMERA
 # ============================================================
 
 def position_camera():
@@ -82,14 +87,7 @@ def position_camera():
         user32.GetSystemMetrics(0)
     )
 
-    screen_height = (
-        user32.GetSystemMetrics(1)
-    )
-
-    # -----------------------------------------------
     # Top-right corner
-    # -----------------------------------------------
-
     x = (
         screen_width
         - CAMERA_WIDTH
@@ -98,20 +96,13 @@ def position_camera():
 
     y = CAMERA_MARGIN
 
-    # -----------------------------------------------
-    # Windows constants
-    # -----------------------------------------------
+    # Show without activating
+    user32.ShowWindow(
+        hwnd,
+        SW_SHOWNOACTIVATE
+    )
 
-    HWND_TOPMOST = -1
-
-    SWP_NOACTIVATE = 0x0010
-
-    SWP_SHOWWINDOW = 0x0040
-
-    # -----------------------------------------------
-    # Put camera above game without activating it
-    # -----------------------------------------------
-
+    # Keep camera above other windows
     user32.SetWindowPos(
         hwnd,
         HWND_TOPMOST,
@@ -133,15 +124,7 @@ def position_camera():
 def main():
 
     # ========================================================
-    # START GAME LAUNCHER
-    # ========================================================
-
-    game_launcher = GameLauncher(
-        GAME_URL
-    )
-
-    # ========================================================
-    # START CAMERA FIRST
+    # STARTUP
     # ========================================================
 
     print()
@@ -150,7 +133,11 @@ def main():
     print("=" * 60)
 
     print()
-    print("Starting camera...")
+    print("Starting camera first...")
+
+    # ========================================================
+    # CAMERA
+    # ========================================================
 
     camera = Camera()
 
@@ -173,7 +160,7 @@ def main():
     fps_counter = FPSCounter()
 
     # ========================================================
-    # CONTROLLER STARTS ON
+    # CONTROLLER ON
     # ========================================================
 
     controller_enabled = True
@@ -181,7 +168,7 @@ def main():
     game_controller.enable()
 
     # ========================================================
-    # CREATE CAMERA WINDOW
+    # CAMERA WINDOW
     # ========================================================
 
     cv2.namedWindow(
@@ -196,8 +183,12 @@ def main():
     )
 
     # ========================================================
-    # LAUNCH SUBWAY SURFERS
+    # LAUNCH GAME AFTER CAMERA IS READY
     # ========================================================
+
+    game_launcher = GameLauncher(
+        GAME_URL
+    )
 
     try:
 
@@ -211,26 +202,8 @@ def main():
         )
 
         print(
-            "You can open Subway Surfers manually."
+            "Open Subway Surfers manually if needed."
         )
-
-    # ========================================================
-    # STARTUP MESSAGE
-    # ========================================================
-
-    print()
-    print("Camera is active.")
-    print("Controller is ON.")
-    print()
-    print("Controls:")
-    print("  LEFT   -> Left")
-    print("  RIGHT  -> Right")
-    print("  UP     -> Jump")
-    print("  DOWN   -> Roll")
-    print("  FIST   -> Hoverboard")
-    print("  PINCH  -> Continue")
-    print("  Q      -> Quit")
-    print()
 
     # ========================================================
     # STATE
@@ -238,11 +211,11 @@ def main():
 
     camera_positioned = False
 
-    game_focused = False
+    game_found = False
 
-    last_camera_position_time = 0
+    game_focus_done = False
 
-    last_game_focus_time = 0
+    startup_time = time.time()
 
     # ========================================================
     # MAIN LOOP
@@ -253,7 +226,7 @@ def main():
         while True:
 
             # =================================================
-            # READ CAMERA
+            # CAMERA
             # =================================================
 
             frame = camera.read()
@@ -306,7 +279,7 @@ def main():
                 )
 
                 # --------------------------------------------
-                # Normal movement action
+                # Gesture
                 # --------------------------------------------
 
                 action = (
@@ -340,14 +313,13 @@ def main():
                     )
                 ):
 
-                    # Send Enter directly.
-                    #
-                    # We don't send it through the normal
-                    # movement mapping.
+                    action = "CONTINUE"
+
                     if controller_enabled:
 
                         success = (
-                            game_controller.keyboard
+                            game_controller
+                            .keyboard
                             .press("enter")
                         )
 
@@ -356,8 +328,6 @@ def main():
                             print(
                                 "Action executed: CONTINUE"
                             )
-
-                    action = "CONTINUE"
 
                 # --------------------------------------------
                 # NORMAL GAME ACTION
@@ -383,7 +353,7 @@ def main():
                         )
 
             # =================================================
-            # HAND NOT FOUND
+            # HAND LOST
             # =================================================
 
             else:
@@ -400,29 +370,23 @@ def main():
 
             fps = fps_counter.update()
 
-            # =================================================
-            # MOVEMENT DEBUG
-            # =================================================
-
-            delta_x, delta_y = (
+            dx, dy = (
                 motion_tracker.get_delta()
             )
 
             # =================================================
-            # HAND STATUS
+            # UI
             # =================================================
 
             if detector.is_hand_detected():
 
                 hand_text = "HAND: ON"
+                hand_color = (0, 255, 0)
 
             else:
 
                 hand_text = "HAND: LOST"
-
-            # =================================================
-            # CAMERA UI
-            # =================================================
+                hand_color = (0, 0, 255)
 
             cv2.putText(
                 frame,
@@ -440,15 +404,13 @@ def main():
                 (10, 50),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.55,
-                (0, 255, 0)
-                if detector.is_hand_detected()
-                else (0, 0, 255),
+                hand_color,
                 2
             )
 
             cv2.putText(
                 frame,
-                f"DX: {delta_x:.3f}",
+                f"DX: {dx:.3f}",
                 (10, 78),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.45,
@@ -458,8 +420,8 @@ def main():
 
             cv2.putText(
                 frame,
-                f"DY: {delta_y:.3f}",
-                (10, 101),
+                f"DY: {dy:.3f}",
+                (10, 100),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.45,
                 (255, 255, 255),
@@ -519,59 +481,65 @@ def main():
             # POSITION CAMERA
             # =================================================
 
-            current_time = time.time()
+            if not camera_positioned:
 
-            if (
-                not camera_positioned
-                or
-                current_time
-                - last_camera_position_time
-                > 0.5
-            ):
-
-                if position_camera():
-
-                    camera_positioned = True
-
-                last_camera_position_time = (
-                    current_time
+                camera_positioned = (
+                    position_camera()
                 )
 
             # =================================================
-            # KEEP GAME FOCUSED
+            # FIND GAME
+            # =================================================
+
+            if not game_found:
+
+                game_found = (
+                    game_launcher
+                    .is_game_available()
+                )
+
+                if game_found:
+
+                    print()
+                    print(
+                        "Subway Surfers detected."
+                    )
+
+            # =================================================
+            # FOCUS GAME ONLY ONCE
             # =================================================
 
             if (
-                not game_focused
-                or
-                current_time
-                - last_game_focus_time
-                > 2.0
+                game_found
+                and not game_focus_done
             ):
+
+                # Give game a moment to finish
+                # loading its window.
+
+                time.sleep(0.5)
 
                 if game_launcher.focus_game():
 
-                    game_focused = True
+                    game_focus_done = True
 
-                last_game_focus_time = (
-                    current_time
-                )
-
-            # =================================================
-            # OPENCV EVENT PROCESSING
-            # =================================================
-
-            cv2.waitKey(1)
+                    print(
+                        "Subway Surfers focused."
+                    )
 
             # =================================================
-            # GLOBAL Q
+            # KEEP CAMERA TOPMOST
             # =================================================
 
-            if (
-                ctypes.windll.user32
-                .GetAsyncKeyState(VK_Q)
-                & 0x8000
-            ):
+            position_camera()
+
+            # =================================================
+            # Q
+            # =================================================
+
+            key = cv2.waitKey(1) & 0xFF
+
+            if key == ord("q"):
 
                 print()
                 print(
@@ -582,16 +550,9 @@ def main():
 
     except KeyboardInterrupt:
 
-        print()
-        print(
-            "Program interrupted."
-        )
+        pass
 
     finally:
-
-        # =====================================================
-        # CLEANUP
-        # =====================================================
 
         print()
         print(
