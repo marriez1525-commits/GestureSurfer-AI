@@ -1,19 +1,3 @@
-"""
-main.py
-
-GestureSurfer AI
-
-Features:
-- Starts camera immediately
-- Launches Subway Surfers automatically
-- Maximizes Subway Surfers
-- Places camera in top-right corner
-- Keeps camera above the game
-- Gestures control Subway Surfers
-- Fist = Hoverboard
-- Pinch = Continue
-"""
-
 import ctypes
 import time
 
@@ -30,7 +14,6 @@ from vision.fist_detector import FistDetector
 from vision.pinch_detector import PinchDetector
 
 from controller.game_controller import GameController
-
 from launcher.game_launcher import GameLauncher
 
 from config import (
@@ -40,38 +23,18 @@ from config import (
 )
 
 
-# ============================================================
-# CAMERA WINDOW
-# ============================================================
-
 CAMERA_WINDOW = "GestureSurfer AI"
-
-CAMERA_WIDTH = 360
-
-CAMERA_HEIGHT = 240
-
+CAMERA_WIDTH = 320
+CAMERA_HEIGHT = 210
 CAMERA_MARGIN = 15
 
-
-# ============================================================
-# WINDOWS CONSTANTS
-# ============================================================
-
 HWND_TOPMOST = -1
-
 SWP_NOACTIVATE = 0x0010
-
 SWP_SHOWWINDOW = 0x0040
-
 SW_SHOWNOACTIVATE = 4
 
 
-# ============================================================
-# POSITION CAMERA
-# ============================================================
-
 def position_camera():
-
     user32 = ctypes.windll.user32
 
     hwnd = user32.FindWindowW(
@@ -80,29 +43,22 @@ def position_camera():
     )
 
     if not hwnd:
-
         return False
 
-    screen_width = (
-        user32.GetSystemMetrics(0)
-    )
+    screen_width = user32.GetSystemMetrics(0)
 
-    # Top-right corner
     x = (
         screen_width
         - CAMERA_WIDTH
         - CAMERA_MARGIN
     )
-
     y = CAMERA_MARGIN
 
-    # Show without activating
     user32.ShowWindow(
         hwnd,
         SW_SHOWNOACTIVATE
     )
 
-    # Keep camera above other windows
     user32.SetWindowPos(
         hwnd,
         HWND_TOPMOST,
@@ -110,474 +66,129 @@ def position_camera():
         y,
         CAMERA_WIDTH,
         CAMERA_HEIGHT,
-        SWP_NOACTIVATE
-        | SWP_SHOWWINDOW
+        SWP_NOACTIVATE | SWP_SHOWWINDOW
     )
 
     return True
 
 
-# ============================================================
-# MAIN
-# ============================================================
-
 def main():
-
-    # ========================================================
-    # STARTUP
-    # ========================================================
-
     print()
     print("=" * 60)
-    print("                 GESTURESURFER AI")
+    print("                GESTURESURFER AI")
     print("=" * 60)
 
-    print()
-    print("Starting camera first...")
-
-    # ========================================================
-    # CAMERA
-    # ========================================================
+    print("\nStarting camera system...")
 
     camera = Camera()
-
     detector = HandDetector()
-
     landmark_tracker = LandmarkTracker()
-
     motion_tracker = MotionTracker()
-
-    gesture_classifier = (
-        GestureClassifier()
-    )
-
+    gesture_classifier = GestureClassifier()
     fist_detector = FistDetector()
-
     pinch_detector = PinchDetector()
-
     game_controller = GameController()
-
     fps_counter = FPSCounter()
-
-    # ========================================================
-    # CONTROLLER ON
-    # ========================================================
-
-    controller_enabled = True
 
     game_controller.enable()
 
-    # ========================================================
-    # CAMERA WINDOW
-    # ========================================================
+    # OpenCV Window setup for floating overlay
+    cv2.namedWindow(CAMERA_WINDOW, cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty(CAMERA_WINDOW, cv2.WND_PROP_TOPMOST, 1)
+    cv2.resizeWindow(CAMERA_WINDOW, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-    cv2.namedWindow(
-        CAMERA_WINDOW,
-        cv2.WINDOW_NORMAL
-    )
-
-    cv2.resizeWindow(
-        CAMERA_WINDOW,
-        CAMERA_WIDTH,
-        CAMERA_HEIGHT
-    )
-
-    # ========================================================
-    # LAUNCH GAME AFTER CAMERA IS READY
-    # ========================================================
-
-    game_launcher = GameLauncher(
-        GAME_URL
-    )
+    game_launcher = GameLauncher(GAME_URL)
 
     try:
-
         game_launcher.launch_game()
-
     except Exception as error:
-
-        print()
-        print(
-            f"Game launch error: {error}"
-        )
-
-        print(
-            "Open Subway Surfers manually if needed."
-        )
-
-    # ========================================================
-    # STATE
-    # ========================================================
+        print(f"\nGame launch error: {error}")
 
     camera_positioned = False
-
     game_found = False
-
     game_focus_done = False
 
-    startup_time = time.time()
-
-    # ========================================================
-    # MAIN LOOP
-    # ========================================================
-
     try:
-
         while True:
-
-            # =================================================
-            # CAMERA
-            # =================================================
-
             frame = camera.read()
 
             if frame is None:
-
                 continue
 
-            # =================================================
-            # HAND DETECTION
-            # =================================================
-
-            frame, landmarks = (
-                detector.process(frame)
-            )
-
+            frame, landmarks = detector.process(frame)
             action = ACTION_NONE
 
-            # =================================================
-            # HAND FOUND
-            # =================================================
-
             if landmarks is not None:
+                landmark_tracker.update(landmarks)
+                palm_position = landmark_tracker.get_palm_center()
+                movement = motion_tracker.update(palm_position)
 
-                # --------------------------------------------
-                # Landmark tracker
-                # --------------------------------------------
+                action = gesture_classifier.classify(movement)
 
-                landmark_tracker.update(
-                    landmarks
-                )
-
-                # --------------------------------------------
-                # Palm center
-                # --------------------------------------------
-
-                palm_position = (
-                    landmark_tracker
-                    .get_palm_center()
-                )
-
-                # --------------------------------------------
-                # Movement
-                # --------------------------------------------
-
-                movement = (
-                    motion_tracker.update(
-                        palm_position
-                    )
-                )
-
-                # --------------------------------------------
-                # Gesture
-                # --------------------------------------------
-
-                action = (
-                    gesture_classifier
-                    .classify(
-                        movement
-                    )
-                )
-
-                # --------------------------------------------
-                # FIST = HOVERBOARD
-                # --------------------------------------------
-
-                if (
-                    fist_detector
-                    .just_made_fist(
-                        landmarks
-                    )
-                ):
-
+                # Check fist
+                if fist_detector.just_made_fist(landmarks):
                     action = ACTION_HOVERBOARD
 
-                # --------------------------------------------
-                # PINCH = CONTINUE
-                # --------------------------------------------
-
-                elif (
-                    pinch_detector
-                    .just_pinched(
-                        landmarks
-                    )
-                ):
-
+                # Check pinch
+                elif pinch_detector.just_pinched(landmarks):
                     action = "CONTINUE"
 
-                    if controller_enabled:
-
-                        success = (
-                            game_controller
-                            .keyboard
-                            .press("enter")
-                        )
-
+                # Execute Action
+                if game_controller.is_enabled() and action != ACTION_NONE:
+                    if action == "CONTINUE":
+                        # Space key triggers restart/continue in web Subway Surfers
+                        success = game_controller.keyboard.press("space")
                         if success:
-
-                            print(
-                                "Action executed: CONTINUE"
-                            )
-
-                # --------------------------------------------
-                # NORMAL GAME ACTION
-                # --------------------------------------------
-
-                if (
-                    controller_enabled
-                    and action != ACTION_NONE
-                    and action != "CONTINUE"
-                ):
-
-                    success = (
-                        game_controller
-                        .execute(
-                            action
-                        )
-                    )
-
-                    if success:
-
-                        print(
-                            f"Action executed: {action}"
-                        )
-
-            # =================================================
-            # HAND LOST
-            # =================================================
+                            print("Action executed: CONTINUE (SPACE)")
+                    else:
+                        success = game_controller.execute(action)
+                        if success:
+                            print(f"Action executed: {action}")
 
             else:
-
                 gesture_classifier.reset()
-
                 fist_detector.reset()
-
                 pinch_detector.reset()
 
-            # =================================================
-            # FPS
-            # =================================================
-
             fps = fps_counter.update()
+            dx, dy = motion_tracker.get_delta()
 
-            dx, dy = (
-                motion_tracker.get_delta()
-            )
+            # Drawing status to frame
+            hand_text = "HAND: ON" if detector.is_hand_detected() else "HAND: LOST"
+            hand_color = (0, 255, 0) if detector.is_hand_detected() else (0, 0, 255)
 
-            # =================================================
-            # UI
-            # =================================================
+            cv2.putText(frame, f"FPS: {fps:.0f}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, hand_text, (10, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hand_color, 2)
+            cv2.putText(frame, f"ACTION: {action}", (10, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
+            cv2.putText(frame, "FIST = HOVERBOARD", (10, 92), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            cv2.putText(frame, "PINCH = CONTINUE", (10, 112), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
-            if detector.is_hand_detected():
+            cv2.imshow(CAMERA_WINDOW, frame)
 
-                hand_text = "HAND: ON"
-                hand_color = (0, 255, 0)
-
-            else:
-
-                hand_text = "HAND: LOST"
-                hand_color = (0, 0, 255)
-
-            cv2.putText(
-                frame,
-                f"FPS: {fps:.0f}",
-                (10, 25),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
-                (0, 255, 0),
-                2
-            )
-
-            cv2.putText(
-                frame,
-                hand_text,
-                (10, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
-                hand_color,
-                2
-            )
-
-            cv2.putText(
-                frame,
-                f"DX: {dx:.3f}",
-                (10, 78),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.45,
-                (255, 255, 255),
-                1
-            )
-
-            cv2.putText(
-                frame,
-                f"DY: {dy:.3f}",
-                (10, 100),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.45,
-                (255, 255, 255),
-                1
-            )
-
-            cv2.putText(
-                frame,
-                f"ACTION: {action}",
-                (10, 130),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.60,
-                (255, 255, 0),
-                2
-            )
-
-            cv2.putText(
-                frame,
-                "CONTROLLER ON",
-                (10, 160),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.50,
-                (0, 255, 0),
-                2
-            )
-
-            cv2.putText(
-                frame,
-                "FIST = HOVERBOARD",
-                (10, 190),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.42,
-                (255, 255, 255),
-                1
-            )
-
-            cv2.putText(
-                frame,
-                "PINCH = CONTINUE",
-                (10, 212),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.42,
-                (255, 255, 255),
-                1
-            )
-
-            # =================================================
-            # SHOW CAMERA
-            # =================================================
-
-            cv2.imshow(
-                CAMERA_WINDOW,
-                frame
-            )
-
-            # =================================================
-            # POSITION CAMERA
-            # =================================================
-
-            if not camera_positioned:
-
-                camera_positioned = (
-                    position_camera()
-                )
-
-            # =================================================
-            # FIND GAME
-            # =================================================
-
-            if not game_found:
-
-                game_found = (
-                    game_launcher
-                    .is_game_available()
-                )
-
-                if game_found:
-
-                    print()
-                    print(
-                        "Subway Surfers detected."
-                    )
-
-            # =================================================
-            # FOCUS GAME ONLY ONCE
-            # =================================================
-
-            if (
-                game_found
-                and not game_focus_done
-            ):
-
-                # Give game a moment to finish
-                # loading its window.
-
-                time.sleep(0.5)
-
-                if game_launcher.focus_game():
-
-                    game_focus_done = True
-
-                    print(
-                        "Subway Surfers focused."
-                    )
-
-            # =================================================
-            # KEEP CAMERA TOPMOST
-            # =================================================
-
+            # Keep camera anchored top-right and z-ordered on top
             position_camera()
 
-            # =================================================
-            # Q
-            # =================================================
+            if not game_found:
+                game_found = game_launcher.is_game_available()
+
+            if game_found and not game_focus_done:
+                time.sleep(0.5)
+                if game_launcher.focus_game():
+                    game_focus_done = True
 
             key = cv2.waitKey(1) & 0xFF
-
             if key == ord("q"):
-
-                print()
-                print(
-                    "Q pressed. Exiting..."
-                )
-
                 break
 
     except KeyboardInterrupt:
-
         pass
-
     finally:
-
-        print()
-        print(
-            "Stopping GestureSurfer AI..."
-        )
-
         game_controller.stop()
-
         detector.close()
-
         camera.release()
-
         cv2.destroyAllWindows()
-
         game_launcher.close_game()
 
-        print(
-            "GestureSurfer AI stopped safely."
-        )
-
-
-# ============================================================
-# ENTRY POINT
-# ============================================================
 
 if __name__ == "__main__":
-
     main()
