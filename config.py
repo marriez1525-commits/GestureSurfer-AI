@@ -4,8 +4,10 @@ config.py
 Central configuration file for GestureSurfer AI.
 
 All important settings for the camera, hand tracking,
-gesture detection, and game controls are stored here.
+gesture detection, game controls, and game launching
+are stored here.
 """
+
 
 # ============================================================
 # CAMERA SETTINGS
@@ -16,7 +18,6 @@ CAMERA_INDEX = 0
 CAMERA_WIDTH = 1280
 CAMERA_HEIGHT = 720
 
-# Display camera feed
 SHOW_CAMERA = True
 
 
@@ -24,13 +25,10 @@ SHOW_CAMERA = True
 # HAND DETECTION SETTINGS
 # ============================================================
 
-# Maximum number of hands to detect
 MAX_NUM_HANDS = 1
 
-# Minimum confidence required to detect a hand
 MIN_DETECTION_CONFIDENCE = 0.5
 
-# Minimum confidence required to track a detected hand
 MIN_TRACKING_CONFIDENCE = 0.45
 
 
@@ -38,19 +36,12 @@ MIN_TRACKING_CONFIDENCE = 0.45
 # GESTURE SETTINGS
 # ============================================================
 
-# Minimum horizontal movement required
-# before we consider it a LEFT or RIGHT gesture.
 HORIZONTAL_THRESHOLD = 35
 
-# Minimum vertical movement required
-# before we consider it an UP or DOWN gesture.
 VERTICAL_THRESHOLD = 25
 
-# Number of frames used for movement smoothing
 SMOOTHING_FRAMES = 3
 
-# Time in seconds before another game action
-# can be triggered.
 GESTURE_COOLDOWN = 0.30
 
 
@@ -83,7 +74,6 @@ KEY_JUMP = "up"
 
 KEY_ROLL = "down"
 
-# Hoverboard key
 KEY_HOVERBOARD = "space"
 
 
@@ -91,7 +81,6 @@ KEY_HOVERBOARD = "space"
 # CALIBRATION
 # ============================================================
 
-# Number of seconds used for initial calibration
 CALIBRATION_TIME = 3
 
 
@@ -101,13 +90,10 @@ CALIBRATION_TIME = 3
 
 WINDOW_TITLE = "GestureSurfer AI"
 
-# Show hand landmarks on camera
 SHOW_LANDMARKS = True
 
-# Show current detected gesture
 SHOW_GESTURE = True
 
-# Show FPS
 SHOW_FPS = True
 
 
@@ -115,6 +101,22 @@ SHOW_FPS = True
 # DEBUGGING
 # ============================================================
 
-# Set to True while developing.
-# Set to False when you want a cleaner final application.
 DEBUG_MODE = True
+
+
+# ============================================================
+# SUBWAY SURFERS
+# ============================================================
+
+GAME_URL = "https://subwaysurfers.gg/"
+
+
+# ============================================================
+# CAMERA OVERLAY
+# ============================================================
+
+CAMERA_WINDOW_WIDTH = 360
+
+CAMERA_WINDOW_HEIGHT = 240
+
+CAMERA_MARGIN = 15
