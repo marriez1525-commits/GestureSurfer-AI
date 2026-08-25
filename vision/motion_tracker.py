@@ -1,23 +1,21 @@
 """
 motion_tracker.py
 
-Fast gesture tracking for GestureSurfer AI.
+Fast swipe detector for GestureSurfer AI.
 
-Behavior:
+One intentional movement = one action.
 
-    LEFT  swipe -> LEFT once
-    RIGHT swipe -> RIGHT once
-    UP    swipe -> JUMP once
-    DOWN  swipe -> ROLL once
-
-After an action, the tracker enters recovery mode.
-During recovery, opposite/return movement is ignored.
-
-The tracker only becomes ready again after the hand
-has slowed down and remained stable for several frames.
+The detector:
+- Uses several recent frames
+- Detects cumulative movement
+- Responds quickly
+- Prevents duplicate actions
+- Ignores return movement
+- Re-arms after the hand becomes stable
 """
 
 import time
+from collections import deque
 
 from config import (
     HORIZONTAL_THRESHOLD,
@@ -29,83 +27,43 @@ from config import (
     ACTION_NONE,
 )
 
-from vision.smoothing import MovementSmoother
-
 
 class MotionTracker:
 
     def __init__(self):
 
-        # -------------------------------------------------
-        # Light smoothing for fast gameplay
-        # -------------------------------------------------
-
-        self.smoother = MovementSmoother(
-            max_points=2
+        # Recent palm positions
+        self.positions = deque(
+            maxlen=5
         )
 
-        # -------------------------------------------------
-        # Previous palm position
-        # -------------------------------------------------
-
-        self.previous_x = None
-        self.previous_y = None
-
-        # -------------------------------------------------
-        # Current frame movement
-        # -------------------------------------------------
-
+        # Current movement
         self.delta_x = 0.0
         self.delta_y = 0.0
 
-        # -------------------------------------------------
         # Last action
-        # -------------------------------------------------
-
         self.last_action = ACTION_NONE
         self.last_action_time = 0.0
 
-        # -------------------------------------------------
-        # Gesture state
-        # -------------------------------------------------
-
+        # Recovery state
         self.recovery_mode = False
 
-        # Number of stable/slow frames required before
-        # another gesture is allowed.
-        self.stable_frames_required = 4
-
+        # Number of stable frames before
+        # accepting another gesture
         self.stable_frames = 0
 
-        # -------------------------------------------------
-        # Timing
-        # -------------------------------------------------
+        self.stable_frames_required = 3
 
-        # Minimum time between intentional gestures.
-        self.cooldown = 0.12
+        # Small movement = hand is stable
+        self.stable_threshold = 0.008
 
-        # Keep action visible briefly.
-        self.action_display_time = 0.16
+        # Fast cooldown
+        self.cooldown = 0.10
 
-        # -------------------------------------------------
-        # Movement threshold
-        # -------------------------------------------------
+        # How long action remains visible
+        self.action_display_time = 0.14
 
-        self.motion_threshold = 0.006
-
-        # -------------------------------------------------
-        # Recovery threshold
-        #
-        # If frame-to-frame movement is below this,
-        # we consider the hand to be slowing/stabilizing.
-        # -------------------------------------------------
-
-        self.recovery_motion_threshold = 0.010
-
-        # -------------------------------------------------
-        # Direction thresholds
-        # -------------------------------------------------
-
+        # Normalized thresholds
         self.horizontal_threshold = (
             HORIZONTAL_THRESHOLD / 1000.0
         )
@@ -114,9 +72,9 @@ class MotionTracker:
             VERTICAL_THRESHOLD / 1000.0
         )
 
-    # =====================================================
+    # ========================================================
     # UPDATE
-    # =====================================================
+    # ========================================================
 
     def update(self, position):
 
@@ -126,69 +84,67 @@ class MotionTracker:
 
         current_x, current_y = position
 
-        # -------------------------------------------------
-        # Smooth current position
-        # -------------------------------------------------
+        # ----------------------------------------------------
+        # Store position
+        # ----------------------------------------------------
 
-        self.smoother.update(
-            current_x,
-            current_y
+        self.positions.append(
+            (current_x, current_y)
         )
 
-        smoothed = (
-            self.smoother.get_smoothed_position()
-        )
-
-        if smoothed is None:
+        if len(self.positions) < 3:
 
             return ACTION_NONE
 
-        current_x, current_y = smoothed
+        # ----------------------------------------------------
+        # Recent movement
+        # ----------------------------------------------------
 
-        # -------------------------------------------------
-        # First frame
-        # -------------------------------------------------
+        oldest_x, oldest_y = (
+            self.positions[0]
+        )
 
-        if self.previous_x is None:
-
-            self.previous_x = current_x
-            self.previous_y = current_y
-
-            return ACTION_NONE
-
-        # -------------------------------------------------
-        # Calculate frame-to-frame movement
-        # -------------------------------------------------
+        newest_x, newest_y = (
+            self.positions[-1]
+        )
 
         self.delta_x = (
-            current_x - self.previous_x
+            newest_x - oldest_x
         )
 
         self.delta_y = (
-            current_y - self.previous_y
+            newest_y - oldest_y
         )
 
-        self.previous_x = current_x
-        self.previous_y = current_y
-
         horizontal = abs(self.delta_x)
+
         vertical = abs(self.delta_y)
 
-        # =================================================
+        # ====================================================
         # RECOVERY MODE
-        # =================================================
+        # ====================================================
 
         if self.recovery_mode:
 
-            # ---------------------------------------------
-            # Ignore all movement while the hand is
-            # returning/recovering.
-            # ---------------------------------------------
+            # Current frame movement
+            previous_x, previous_y = (
+                self.positions[-2]
+            )
 
-            if (
-                horizontal < self.recovery_motion_threshold
-                and vertical < self.recovery_motion_threshold
-            ):
+            frame_dx = (
+                newest_x - previous_x
+            )
+
+            frame_dy = (
+                newest_y - previous_y
+            )
+
+            frame_speed = max(
+                abs(frame_dx),
+                abs(frame_dy)
+            )
+
+            if frame_speed < self.stable_threshold:
 
                 self.stable_frames += 1
 
@@ -196,10 +152,7 @@ class MotionTracker:
 
                 self.stable_frames = 0
 
-            # ---------------------------------------------
-            # Only re-arm after several stable frames.
-            # ---------------------------------------------
-
+            # Re-arm after hand becomes stable
             if (
                 self.stable_frames
                 >= self.stable_frames_required
@@ -209,40 +162,54 @@ class MotionTracker:
 
                 self.stable_frames = 0
 
+                self.positions.clear()
+
+                self.positions.append(
+                    (newest_x, newest_y)
+                )
+
+                self.delta_x = 0.0
+                self.delta_y = 0.0
+
                 self.last_action = ACTION_NONE
 
             return self.get_current_action()
 
-        # =================================================
+        # ====================================================
         # COOLDOWN
-        # =================================================
+        # ====================================================
 
         current_time = time.time()
 
         if (
-            current_time - self.last_action_time
+            current_time
+            - self.last_action_time
             < self.cooldown
         ):
 
             return self.get_current_action()
 
-        # =================================================
+        # ====================================================
         # IGNORE TINY MOVEMENT
-        # =================================================
+        # ====================================================
 
         if (
-            horizontal < self.motion_threshold
-            and vertical < self.motion_threshold
+            horizontal
+            < self.horizontal_threshold
+            and
+            vertical
+            < self.vertical_threshold
         ):
 
             return self.get_current_action()
 
-        # =================================================
-        # HORIZONTAL SWIPE
-        # =================================================
+        # ====================================================
+        # HORIZONTAL
+        # ====================================================
 
         if (
-            horizontal >= self.horizontal_threshold
+            horizontal
+            >= self.horizontal_threshold
             and horizontal > vertical
         ):
 
@@ -258,12 +225,13 @@ class MotionTracker:
 
             return action
 
-        # =================================================
-        # VERTICAL SWIPE
-        # =================================================
+        # ====================================================
+        # VERTICAL
+        # ====================================================
 
         if (
-            vertical >= self.vertical_threshold
+            vertical
+            >= self.vertical_threshold
             and vertical > horizontal
         ):
 
@@ -281,9 +249,9 @@ class MotionTracker:
 
         return self.get_current_action()
 
-    # =====================================================
-    # TRIGGER ACTION
-    # =====================================================
+    # ========================================================
+    # TRIGGER
+    # ========================================================
 
     def trigger_action(self, action):
 
@@ -291,14 +259,13 @@ class MotionTracker:
 
         self.last_action_time = time.time()
 
-        # Immediately enter recovery mode.
         self.recovery_mode = True
 
         self.stable_frames = 0
 
-    # =====================================================
-    # CURRENT DISPLAYED ACTION
-    # =====================================================
+    # ========================================================
+    # DISPLAY ACTION
+    # ========================================================
 
     def get_current_action(self):
 
@@ -317,19 +284,21 @@ class MotionTracker:
 
         return ACTION_NONE
 
-    # =====================================================
-    # CURRENT POSITION
-    # =====================================================
+    # ========================================================
+    # POSITION
+    # ========================================================
 
     def get_current_position(self):
 
-        return (
-            self.smoother.get_smoothed_position()
-        )
+        if not self.positions:
 
-    # =====================================================
-    # MOVEMENT DELTA
-    # =====================================================
+            return None
+
+        return self.positions[-1]
+
+    # ========================================================
+    # DELTA
+    # ========================================================
 
     def get_delta(self):
 
@@ -338,16 +307,13 @@ class MotionTracker:
             self.delta_y
         )
 
-    # =====================================================
+    # ========================================================
     # RESET
-    # =====================================================
+    # ========================================================
 
     def reset(self):
 
-        self.smoother.reset()
-
-        self.previous_x = None
-        self.previous_y = None
+        self.positions.clear()
 
         self.delta_x = 0.0
         self.delta_y = 0.0
