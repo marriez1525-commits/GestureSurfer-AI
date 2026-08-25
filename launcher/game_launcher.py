@@ -1,14 +1,14 @@
 """
 game_launcher.py
 
-Launches Subway Surfers in a dedicated Chrome window.
+Launches Subway Surfers in Chrome fullscreen/kiosk mode
+and provides basic Windows window management.
 """
 
 import ctypes
 import os
 import subprocess
 import time
-from pathlib import Path
 
 
 class GameLauncher:
@@ -19,14 +19,11 @@ class GameLauncher:
 
         self.chrome_process = None
 
-        self.profile_dir = (
-            Path(__file__).resolve().parent
-            / "chrome_profile"
-        )
+        self.game_hwnd = None
 
-    # ========================================================
+    # =========================================================
     # FIND CHROME
-    # ========================================================
+    # =========================================================
 
     def find_chrome(self):
 
@@ -53,9 +50,9 @@ class GameLauncher:
 
         return None
 
-    # ========================================================
-    # LAUNCH
-    # ========================================================
+    # =========================================================
+    # LAUNCH GAME
+    # =========================================================
 
     def launch_game(self):
 
@@ -67,49 +64,43 @@ class GameLauncher:
                 "Google Chrome was not found."
             )
 
-        self.profile_dir.mkdir(
-            parents=True,
-            exist_ok=True
-        )
-
         command = [
 
             chrome,
 
-            f"--user-data-dir={self.profile_dir}",
-
+            # Open the game as an app window
             f"--app={self.game_url}",
 
-            "--start-maximized",
+            # Full-screen/kiosk appearance
+            "--start-fullscreen",
+
+            "--disable-session-crashed-bubble",
 
             "--no-first-run",
 
             "--no-default-browser-check",
-
-            "--disable-session-crashed-bubble",
         ]
 
+        print()
+        print("Launching Subway Surfers...")
+
+        # IMPORTANT:
+        # Do NOT wait for the website to finish loading.
+        #
+        # The camera can start immediately.
+        self.chrome_process = subprocess.Popen(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
         print(
-            "Launching Subway Surfers..."
+            "Subway Surfers process started."
         )
 
-        self.chrome_process = (
-            subprocess.Popen(
-                command,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-        )
-
-        time.sleep(4)
-
-        print(
-            "Subway Surfers launched."
-        )
-
-    # ========================================================
-    # FIND GAME WINDOW
-    # ========================================================
+    # =========================================================
+    # FIND SUBWAY SURFERS WINDOW
+    # =========================================================
 
     def find_game_window(self):
 
@@ -164,11 +155,13 @@ class GameLauncher:
             0
         )
 
-        return result["hwnd"]
+        self.game_hwnd = result["hwnd"]
 
-    # ========================================================
+        return self.game_hwnd
+
+    # =========================================================
     # FOCUS GAME
-    # ========================================================
+    # =========================================================
 
     def focus_game(self):
 
@@ -180,20 +173,30 @@ class GameLauncher:
 
         user32 = ctypes.windll.user32
 
+        # Maximize
         user32.ShowWindow(
             hwnd,
             3
         )
 
+        # Bring game forward
         user32.SetForegroundWindow(
             hwnd
         )
 
         return True
 
-    # ========================================================
+    # =========================================================
+    # GAME AVAILABLE?
+    # =========================================================
+
+    def is_game_available(self):
+
+        return self.find_game_window() is not None
+
+    # =========================================================
     # CLOSE
-    # ========================================================
+    # =========================================================
 
     def close_game(self):
 
