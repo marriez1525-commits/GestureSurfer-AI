@@ -4,19 +4,17 @@ main.py
 GestureSurfer AI
 
 Features:
-- Launches Subway Surfers automatically
-- Opens webcam automatically
-- Hand gesture control
-- LEFT / RIGHT / JUMP / ROLL
-- Fist = Hoverboard
-- Camera overlay can be placed on top of the game
-
-Controls:
-    F8 = Controller ON/OFF
-    Q  = Quit
+- Automatically launches Subway Surfers
+- Automatically opens webcam
+- Camera appears in top-right corner
+- Camera stays above the game
+- Hand gestures control the game
+- Fist activates hoverboard
 """
 
+import ctypes
 import time
+
 import cv2
 
 from camera.camera import Camera
@@ -36,16 +34,74 @@ from config import (
     ACTION_NONE,
     ACTION_HOVERBOARD,
     GAME_URL,
-    CAMERA_WINDOW_WIDTH,
-    CAMERA_WINDOW_HEIGHT,
 )
 
 
 # ============================================================
-# WINDOW NAME
+# CAMERA WINDOW
 # ============================================================
 
 CAMERA_WINDOW = "GestureSurfer AI"
+
+CAMERA_WIDTH = 360
+CAMERA_HEIGHT = 240
+
+CAMERA_MARGIN = 15
+
+
+# ============================================================
+# WINDOWS HELPER
+# ============================================================
+
+def position_camera_window():
+
+    user32 = ctypes.windll.user32
+
+    # Find OpenCV camera window
+    hwnd = user32.FindWindowW(
+        None,
+        CAMERA_WINDOW
+    )
+
+    if not hwnd:
+        return False
+
+    # Screen dimensions
+    screen_width = user32.GetSystemMetrics(0)
+    screen_height = user32.GetSystemMetrics(1)
+
+    # Top-right corner
+    x = (
+        screen_width
+        - CAMERA_WIDTH
+        - CAMERA_MARGIN
+    )
+
+    y = CAMERA_MARGIN
+
+    # HWND_TOPMOST
+    HWND_TOPMOST = -1
+
+    # Flags
+    SWP_SHOWWINDOW = 0x0040
+
+    user32.SetWindowPos(
+        hwnd,
+        HWND_TOPMOST,
+        x,
+        y,
+        CAMERA_WIDTH,
+        CAMERA_HEIGHT,
+        SWP_SHOWWINDOW
+    )
+
+    # Show window
+    user32.ShowWindow(
+        hwnd,
+        5
+    )
+
+    return True
 
 
 # ============================================================
@@ -55,16 +111,12 @@ CAMERA_WINDOW = "GestureSurfer AI"
 def main():
 
     # ========================================================
-    # INITIALIZE GAME LAUNCHER
+    # LAUNCH GAME
     # ========================================================
 
     game_launcher = GameLauncher(
         GAME_URL
     )
-
-    # ========================================================
-    # LAUNCH SUBWAY SURFERS
-    # ========================================================
 
     try:
 
@@ -72,15 +124,12 @@ def main():
 
     except Exception as error:
 
-        print()
         print(
-            f"Could not automatically launch Subway Surfers: "
-            f"{error}"
+            f"Could not launch Subway Surfers: {error}"
         )
 
-        print()
         print(
-            "The camera controller will still start."
+            "You can open the game manually."
         )
 
     # ========================================================
@@ -88,10 +137,6 @@ def main():
     # ========================================================
 
     camera = Camera()
-
-    # ========================================================
-    # INITIALIZE COMPUTER VISION
-    # ========================================================
 
     detector = HandDetector()
 
@@ -102,10 +147,6 @@ def main():
     gesture_classifier = GestureClassifier()
 
     fist_detector = FistDetector()
-
-    # ========================================================
-    # INITIALIZE GAME CONTROLLER
-    # ========================================================
 
     game_controller = GameController()
 
@@ -130,8 +171,8 @@ def main():
 
     cv2.resizeWindow(
         CAMERA_WINDOW,
-        CAMERA_WINDOW_WIDTH,
-        CAMERA_WINDOW_HEIGHT
+        CAMERA_WIDTH,
+        CAMERA_HEIGHT
     )
 
     # ========================================================
@@ -144,40 +185,29 @@ def main():
     print("=" * 60)
 
     print()
-    print("Hand Controls:")
-    print("    LEFT  -> Left Arrow")
-    print("    RIGHT -> Right Arrow")
-    print("    UP    -> Jump")
-    print("    DOWN  -> Roll")
-    print("    FIST  -> Hoverboard")
+    print("LEFT  -> Move left")
+    print("RIGHT -> Move right")
+    print("UP    -> Jump")
+    print("DOWN  -> Roll")
+    print("FIST  -> Hoverboard")
 
     print()
-    print("Keyboard Controls:")
-    print("    F8 -> Controller ON/OFF")
-    print("    Q  -> Quit")
+    print("F8 -> Controller ON/OFF")
+    print("Q  -> Quit")
 
     print()
-    print("Controller: ON")
+    print("Controller is ON.")
 
     print()
-    print("Starting camera in 3 seconds...")
-
-    time.sleep(3)
-
-    print()
-    print("Camera started.")
-    print("GestureSurfer AI is ready.")
-    print()
-
-    # ========================================================
-    # CAMERA POSITIONING STATE
-    # ========================================================
-
-    camera_positioned = False
+    print("Starting camera...")
 
     # ========================================================
     # MAIN LOOP
     # ========================================================
+
+    camera_positioned = False
+
+    frame_counter = 0
 
     try:
 
@@ -213,25 +243,13 @@ def main():
 
             if landmarks is not None:
 
-                # --------------------------------------------
-                # Update landmark tracker
-                # --------------------------------------------
-
                 landmark_tracker.update(
                     landmarks
                 )
 
-                # --------------------------------------------
-                # Get palm position
-                # --------------------------------------------
-
                 palm_position = (
                     landmark_tracker.get_palm_center()
                 )
-
-                # --------------------------------------------
-                # Motion detection
-                # --------------------------------------------
 
                 movement = (
                     motion_tracker.update(
@@ -239,30 +257,20 @@ def main():
                     )
                 )
 
-                # --------------------------------------------
-                # Gesture classification
-                # --------------------------------------------
-
                 action = (
                     gesture_classifier.classify(
                         movement
                     )
                 )
 
-                # --------------------------------------------
                 # FIST = HOVERBOARD
-                # --------------------------------------------
-
                 if fist_detector.just_made_fist(
                     landmarks
                 ):
 
                     action = ACTION_HOVERBOARD
 
-                # --------------------------------------------
-                # SEND ACTION
-                # --------------------------------------------
-
+                # Send game action
                 if (
                     controller_enabled
                     and action != ACTION_NONE
@@ -280,56 +288,48 @@ def main():
                             f"Action executed: {action}"
                         )
 
-            # ------------------------------------------------
-            # HAND NOT FOUND
-            # ------------------------------------------------
-
             else:
 
                 gesture_classifier.reset()
 
                 fist_detector.reset()
 
-            # =================================================
+            # ------------------------------------------------
             # FPS
-            # =================================================
+            # ------------------------------------------------
 
             fps = fps_counter.update()
 
-            # =================================================
-            # MOVEMENT VALUES
-            # =================================================
+            # ------------------------------------------------
+            # MOVEMENT
+            # ------------------------------------------------
 
             delta_x, delta_y = (
                 motion_tracker.get_delta()
             )
 
             # =================================================
-            # DRAW FPS
+            # DRAW CAMERA UI
             # =================================================
 
             cv2.putText(
                 frame,
-                f"FPS: {fps:.1f}",
-                (20, 30),
+                f"FPS: {fps:.0f}",
+                (10, 25),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.65,
+                0.55,
                 (0, 255, 0),
                 2
             )
-
-            # =================================================
-            # HAND STATUS
-            # =================================================
 
             if detector.is_hand_detected():
 
                 cv2.putText(
                     frame,
-                    "HAND: DETECTED",
-                    (20, 60),
+                    "HAND: ON",
+                    (10, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
+                    0.55,
                     (0, 255, 0),
                     2
                 )
@@ -338,68 +338,52 @@ def main():
 
                 cv2.putText(
                     frame,
-                    "HAND: NOT DETECTED",
-                    (20, 60),
+                    "HAND: LOST",
+                    (10, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
+                    0.55,
                     (0, 0, 255),
                     2
                 )
 
-            # =================================================
-            # DX
-            # =================================================
-
             cv2.putText(
                 frame,
                 f"DX: {delta_x:.3f}",
-                (20, 95),
+                (10, 78),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
+                0.45,
                 (255, 255, 255),
-                2
+                1
             )
-
-            # =================================================
-            # DY
-            # =================================================
 
             cv2.putText(
                 frame,
                 f"DY: {delta_y:.3f}",
-                (20, 125),
+                (10, 101),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
+                0.45,
                 (255, 255, 255),
-                2
+                1
             )
-
-            # =================================================
-            # ACTION
-            # =================================================
 
             cv2.putText(
                 frame,
                 f"ACTION: {action}",
-                (20, 165),
+                (10, 130),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.75,
+                0.6,
                 (255, 255, 0),
                 2
             )
-
-            # =================================================
-            # CONTROLLER
-            # =================================================
 
             if controller_enabled:
 
                 cv2.putText(
                     frame,
-                    "CONTROLLER: ON",
-                    (20, 200),
+                    "CONTROLLER ON",
+                    (10, 160),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
+                    0.5,
                     (0, 255, 0),
                     2
                 )
@@ -408,92 +392,81 @@ def main():
 
                 cv2.putText(
                     frame,
-                    "CONTROLLER: OFF",
-                    (20, 200),
+                    "CONTROLLER OFF",
+                    (10, 160),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
+                    0.5,
                     (0, 0, 255),
                     2
                 )
 
-            # =================================================
-            # INSTRUCTIONS
-            # =================================================
-
-            cv2.putText(
-                frame,
-                "F8 = ON/OFF",
-                (20, 230),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (255, 255, 255),
-                1
-            )
-
             cv2.putText(
                 frame,
                 "FIST = HOVERBOARD",
-                (20, 255),
+                (10, 190),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
+                0.42,
                 (255, 255, 255),
                 1
             )
 
             cv2.putText(
                 frame,
-                "Q = QUIT",
-                (20, 280),
+                "F8 = ON/OFF | Q = QUIT",
+                (10, 215),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
+                0.40,
                 (255, 255, 255),
                 1
             )
 
-            # =================================================
+            # ------------------------------------------------
             # SHOW CAMERA
-            # =================================================
+            # ------------------------------------------------
 
             cv2.imshow(
                 CAMERA_WINDOW,
                 frame
             )
 
-            # =================================================
-            # POSITION CAMERA OVERLAY
-            # =================================================
+            # ------------------------------------------------
+            # POSITION CAMERA
+            # ------------------------------------------------
 
             if not camera_positioned:
 
-                # Give OpenCV a moment to create window.
                 cv2.waitKey(1)
 
-                positioned = (
-                    game_launcher.make_camera_topmost(
-                        CAMERA_WINDOW
-                    )
-                )
-
-                if positioned:
+                # Try several times during startup.
+                if position_camera_window():
 
                     camera_positioned = True
 
-                    # Return focus to game.
-                    game_launcher.focus_game()
-
-            # =================================================
-            # KEYBOARD INPUT
-            # =================================================
-
-            key = (
-                cv2.waitKey(1)
-                & 0xFF
-            )
+                    print(
+                        "Camera positioned top-right."
+                    )
 
             # ------------------------------------------------
-            # F8 = CONTROLLER ON/OFF
+            # Re-assert camera position occasionally.
+            #
+            # This helps if Chrome temporarily covers it.
             # ------------------------------------------------
 
+            frame_counter += 1
+
+            if frame_counter >= 60:
+
+                frame_counter = 0
+
+                position_camera_window()
+
+            # ------------------------------------------------
+            # KEY INPUT
+            # ------------------------------------------------
+
+            key = cv2.waitKey(1) & 0xFF
+
+            # F8
             if key == 0x77:
 
                 controller_enabled = (
@@ -504,9 +477,8 @@ def main():
 
                     game_controller.enable()
 
-                    print()
                     print(
-                        "CONTROLLER ENABLED"
+                        "Controller enabled."
                     )
 
                 else:
@@ -517,18 +489,13 @@ def main():
 
                     fist_detector.reset()
 
-                    print()
                     print(
-                        "CONTROLLER DISABLED"
+                        "Controller disabled."
                     )
 
-            # ------------------------------------------------
-            # Q = QUIT
-            # ------------------------------------------------
-
+            # Q
             elif key == ord("q"):
 
-                print()
                 print(
                     "Q pressed. Exiting..."
                 )
@@ -537,20 +504,14 @@ def main():
 
     except KeyboardInterrupt:
 
-        print()
         print(
             "Program interrupted."
         )
 
     finally:
 
-        # =====================================================
-        # CLEANUP
-        # =====================================================
-
-        print()
         print(
-            "Stopping controller..."
+            "Stopping GestureSurfer AI..."
         )
 
         game_controller.stop()
@@ -563,17 +524,12 @@ def main():
 
         cv2.destroyAllWindows()
 
-        # Close automatically launched game
         game_launcher.close_game()
 
         print(
             "GestureSurfer AI stopped safely."
         )
 
-
-# ============================================================
-# ENTRY POINT
-# ============================================================
 
 if __name__ == "__main__":
 
