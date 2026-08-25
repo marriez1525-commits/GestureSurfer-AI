@@ -29,37 +29,23 @@ CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 210
 CAMERA_MARGIN = 20
 
-HWND_TOPMOST = -1
-SWP_NOACTIVATE = 0x0010
-SWP_SHOWWINDOW = 0x0040
-SW_SHOWNOACTIVATE = 4
-
 
 def position_camera_top_right():
-    """Forces the OpenCV camera window to stay pinned at the top right of the screen."""
     user32 = ctypes.windll.user32
-
-    hwnd = user32.FindWindowW(None, CAMERA_WINDOW)
-    if not hwnd:
-        return False
-
     screen_width = user32.GetSystemMetrics(0)
 
-    # Calculate top-right coordinates
+    # Position window top-right
     x = screen_width - CAMERA_WIDTH - CAMERA_MARGIN
     y = CAMERA_MARGIN
 
-    user32.ShowWindow(hwnd, SW_SHOWNOACTIVATE)
-    user32.SetWindowPos(
-        hwnd,
-        HWND_TOPMOST,
-        x,
-        y,
-        CAMERA_WIDTH,
-        CAMERA_HEIGHT,
-        SWP_NOACTIVATE | SWP_SHOWWINDOW,
-    )
-    return True
+    cv2.moveWindow(CAMERA_WINDOW, x, y)
+
+    # Keep window on top
+    hwnd = user32.FindWindowW(None, CAMERA_WINDOW)
+    if hwnd:
+        user32.SetWindowPos(
+            hwnd, -1, x, y, CAMERA_WIDTH, CAMERA_HEIGHT, 0x0010 | 0x0040
+        )
 
 
 def main():
@@ -83,13 +69,15 @@ def main():
     controller_enabled = True
     game_controller.enable()
 
-    # Disable PyAutoGUI fail-safe pause for faster clicks
     pyautogui.FAILSAFE = False
 
-    # OpenCV Window setup
+    # Setup window
     cv2.namedWindow(CAMERA_WINDOW, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(CAMERA_WINDOW, cv2.WND_PROP_TOPMOST, 1)
     cv2.resizeWindow(CAMERA_WINDOW, CAMERA_WIDTH, CAMERA_HEIGHT)
+
+    # Move to top right before starting game
+    position_camera_top_right()
 
     game_launcher = GameLauncher(GAME_URL)
 
@@ -129,10 +117,12 @@ def main():
                 # Execute actions
                 if controller_enabled and action != ACTION_NONE:
                     if action == "CONTINUE":
-                        # Click the middle of the screen to activate/continue the web game canvas
+                        # Click center & press space/up to play/resume
                         screen_w, screen_h = pyautogui.size()
                         pyautogui.click(screen_w // 2, screen_h // 2)
-                        print("Action executed: CONTINUE (Mouse Click)")
+                        pyautogui.press("space")
+                        pyautogui.press("up")
+                        print("Action executed: CONTINUE (Click + Space)")
                     else:
                         success = game_controller.execute(action)
                         if success:
@@ -145,7 +135,7 @@ def main():
 
             fps = fps_counter.update()
 
-            # Drawing HUD status on overlay
+            # HUD Status
             hand_text = "HAND: ON" if detector.is_hand_detected() else "HAND: LOST"
             hand_color = (0, 255, 0) if detector.is_hand_detected() else (0, 0, 255)
 
@@ -157,7 +147,7 @@ def main():
 
             cv2.imshow(CAMERA_WINDOW, frame)
 
-            # Keep camera anchored top-right and on top of browser
+            # Ensure camera stays anchored top-right
             position_camera_top_right()
 
             if not game_found:
