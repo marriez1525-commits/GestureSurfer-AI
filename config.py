@@ -1,28 +1,23 @@
 """
 config.py
 
-Central configuration file for GestureSurfer AI.
-
-All important settings for the camera, hand tracking,
-gesture detection, game controls, and game launching
-are stored here.
+Central configuration for GestureSurfer AI.
 """
 
-
 # ============================================================
-# CAMERA SETTINGS
+# CAMERA
 # ============================================================
 
 CAMERA_INDEX = 0
 
-CAMERA_WIDTH = 1280
-CAMERA_HEIGHT = 720
+CAMERA_WIDTH = 640
+CAMERA_HEIGHT = 480
 
 SHOW_CAMERA = True
 
 
 # ============================================================
-# HAND DETECTION SETTINGS
+# HAND DETECTION
 # ============================================================
 
 MAX_NUM_HANDS = 1
@@ -33,20 +28,22 @@ MIN_TRACKING_CONFIDENCE = 0.45
 
 
 # ============================================================
-# GESTURE SETTINGS
+# GESTURE DETECTION
 # ============================================================
 
-HORIZONTAL_THRESHOLD = 35
+# Lower values because movement is measured across
+# several recent frames.
+HORIZONTAL_THRESHOLD = 28
 
-VERTICAL_THRESHOLD = 25
+VERTICAL_THRESHOLD = 20
 
-SMOOTHING_FRAMES = 3
+SMOOTHING_FRAMES = 2
 
-GESTURE_COOLDOWN = 0.30
+GESTURE_COOLDOWN = 0.10
 
 
 # ============================================================
-# GAME ACTIONS
+# ACTIONS
 # ============================================================
 
 ACTION_LEFT = "LEFT"
@@ -63,7 +60,7 @@ ACTION_NONE = "NONE"
 
 
 # ============================================================
-# KEYBOARD MAPPING
+# KEYBOARD
 # ============================================================
 
 KEY_LEFT = "left"
@@ -85,7 +82,7 @@ CALIBRATION_TIME = 3
 
 
 # ============================================================
-# DISPLAY / UI
+# UI
 # ============================================================
 
 WINDOW_TITLE = "GestureSurfer AI"
@@ -98,14 +95,14 @@ SHOW_FPS = True
 
 
 # ============================================================
-# DEBUGGING
+# DEBUG
 # ============================================================
 
 DEBUG_MODE = True
 
 
 # ============================================================
-# SUBWAY SURFERS
+# GAME
 # ============================================================
 
 GAME_URL = "https://subwaysurfers.gg/"
