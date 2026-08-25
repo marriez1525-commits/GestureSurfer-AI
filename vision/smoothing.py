@@ -1,12 +1,7 @@
 """
 smoothing.py
 
-Fast hand-position smoothing for GestureSurfer AI.
-
-Uses a weighted average:
-- Recent frames have more influence.
-- Older frames have less influence.
-- This reduces jitter without adding too much delay.
+Fast weighted smoothing for gameplay.
 """
 
 from collections import deque
@@ -14,9 +9,7 @@ from collections import deque
 
 class MovementSmoother:
 
-    def __init__(self, max_points=3):
-
-        self.max_points = max_points
+    def __init__(self, max_points=2):
 
         self.x_history = deque(
             maxlen=max_points
@@ -37,14 +30,9 @@ class MovementSmoother:
 
             return None
 
-        # -----------------------------------------
-        # Weighted smoothing
-        #
-        # Most recent position gets the highest
-        # weight.
-        # -----------------------------------------
-
-        count = len(self.x_history)
+        count = len(
+            self.x_history
+        )
 
         weights = list(
             range(1, count + 1)
@@ -53,30 +41,25 @@ class MovementSmoother:
         total_weight = sum(weights)
 
         weighted_x = sum(
-            value * weight
-            for value, weight in zip(
+            x * w
+            for x, w in zip(
                 self.x_history,
                 weights
             )
         )
 
         weighted_y = sum(
-            value * weight
-            for value, weight in zip(
+            y * w
+            for y, w in zip(
                 self.y_history,
                 weights
             )
         )
 
-        average_x = (
-            weighted_x / total_weight
-        )
-
-        average_y = (
+        return (
+            weighted_x / total_weight,
             weighted_y / total_weight
         )
-
-        return average_x, average_y
 
     def get_latest_position(self):
 
