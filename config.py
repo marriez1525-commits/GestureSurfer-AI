@@ -106,8 +106,11 @@ DEBUG_MODE = True
 # ============================================================
 
 # config.py
+# config.py
+# config.py
+# config.py
+# config.py
 GAME_URL = "https://poki.com/en/g/subway-surfers"
-
 
 # ============================================================
 # CAMERA OVERLAY
