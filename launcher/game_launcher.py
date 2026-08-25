@@ -35,17 +35,18 @@ class GameLauncher:
         if chrome is None:
             raise FileNotFoundError("Google Chrome was not found.")
 
-        # Launching with --kiosk removes sidebars/ads and forces full-screen canvas
+        # --kiosk forces true borderless full screen across the whole display
         command = [
             chrome,
             f"--app={self.game_url}",
             "--kiosk",
+            "--start-fullscreen",
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-session-crashed-bubble",
         ]
 
-        print("Launching Subway Surfers...")
+        print("Launching Subway Surfers in Fullscreen Kiosk Mode...")
 
         self.chrome_process = subprocess.Popen(
             command,
@@ -73,7 +74,7 @@ class GameLauncher:
             user32.GetWindowTextW(hwnd, buffer, length + 1)
             title = buffer.value.lower()
 
-            if "subway surfers" in title or "poki" in title or "chrome" in title:
+            if "subway surfers" in title or "chrome" in title:
                 result["hwnd"] = hwnd
                 return False
 

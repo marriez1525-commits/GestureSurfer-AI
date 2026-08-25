@@ -34,13 +34,11 @@ def position_camera_top_right():
     user32 = ctypes.windll.user32
     screen_width = user32.GetSystemMetrics(0)
 
-    # Position window top-right
     x = screen_width - CAMERA_WIDTH - CAMERA_MARGIN
     y = CAMERA_MARGIN
 
     cv2.moveWindow(CAMERA_WINDOW, x, y)
 
-    # Keep window on top
     hwnd = user32.FindWindowW(None, CAMERA_WINDOW)
     if hwnd:
         user32.SetWindowPos(
@@ -71,12 +69,10 @@ def main():
 
     pyautogui.FAILSAFE = False
 
-    # Setup window
     cv2.namedWindow(CAMERA_WINDOW, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(CAMERA_WINDOW, cv2.WND_PROP_TOPMOST, 1)
     cv2.resizeWindow(CAMERA_WINDOW, CAMERA_WIDTH, CAMERA_HEIGHT)
 
-    # Move to top right before starting game
     position_camera_top_right()
 
     game_launcher = GameLauncher(GAME_URL)
@@ -117,11 +113,10 @@ def main():
                 # Execute actions
                 if controller_enabled and action != ACTION_NONE:
                     if action == "CONTINUE":
-                        # Click center & press space/up to play/resume
                         screen_w, screen_h = pyautogui.size()
                         pyautogui.click(screen_w // 2, screen_h // 2)
                         pyautogui.press("space")
-                        pyautogui.press("up")
+                        pyautogui.press("enter")
                         print("Action executed: CONTINUE (Click + Space)")
                     else:
                         success = game_controller.execute(action)
@@ -135,7 +130,7 @@ def main():
 
             fps = fps_counter.update()
 
-            # HUD Status
+            # HUD Display
             hand_text = "HAND: ON" if detector.is_hand_detected() else "HAND: LOST"
             hand_color = (0, 255, 0) if detector.is_hand_detected() else (0, 0, 255)
 
@@ -147,7 +142,6 @@ def main():
 
             cv2.imshow(CAMERA_WINDOW, frame)
 
-            # Ensure camera stays anchored top-right
             position_camera_top_right()
 
             if not game_found:
