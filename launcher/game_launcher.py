@@ -41,14 +41,13 @@ class GameLauncher:
         command = [
             chrome,
             f"--app={self.game_url}",
-            "--start-fullscreen",
-            "--kiosk",
+            "--start-maximized",
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-session-crashed-bubble",
         ]
 
-        print("Launching Subway Surfers in full screen...")
+        print("Launching Subway Surfers...")
 
         self.chrome_process = subprocess.Popen(
             command,
@@ -92,7 +91,7 @@ class GameLauncher:
 
             title = buffer.value.lower()
 
-            if "subway surfers" in title or "chrome" in title:
+            if "subway surfers" in title or "poki" in title:
                 result["hwnd"] = hwnd
                 return False
 
@@ -113,6 +112,8 @@ class GameLauncher:
             return False
 
         user32 = ctypes.windll.user32
+        # Maximize window (SW_MAXIMIZE = 3)
+        user32.ShowWindow(hwnd, 3)
         user32.SetForegroundWindow(hwnd)
         return True
 
