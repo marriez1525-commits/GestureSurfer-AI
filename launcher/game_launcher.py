@@ -1,9 +1,3 @@
-"""
-game_launcher.py
-
-Launches Subway Surfers in a fullscreen Chrome app window.
-"""
-
 import ctypes
 import os
 import subprocess
@@ -13,13 +7,11 @@ import time
 class GameLauncher:
 
     def __init__(self, game_url):
-
         self.game_url = game_url
         self.chrome_process = None
         self.game_hwnd = None
 
     def find_chrome(self):
-
         paths = [
             os.path.expandvars(
                 r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"
@@ -39,7 +31,6 @@ class GameLauncher:
         return None
 
     def launch_game(self):
-
         chrome = self.find_chrome()
 
         if chrome is None:
@@ -49,19 +40,15 @@ class GameLauncher:
 
         command = [
             chrome,
-
-            # Your Subway Surfers URL
             f"--app={self.game_url}",
-
-            # TRUE fullscreen/kiosk window
+            "--start-fullscreen",
             "--kiosk",
-
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-session-crashed-bubble",
         ]
 
-        print("Launching Subway Surfers...")
+        print("Launching Subway Surfers in full screen...")
 
         self.chrome_process = subprocess.Popen(
             command,
@@ -72,7 +59,6 @@ class GameLauncher:
         print("Subway Surfers launched.")
 
     def find_game_window(self):
-
         user32 = ctypes.windll.user32
 
         result = {
@@ -86,7 +72,6 @@ class GameLauncher:
         )
 
         def callback(hwnd, lparam):
-
             if not user32.IsWindowVisible(hwnd):
                 return True
 
@@ -107,10 +92,8 @@ class GameLauncher:
 
             title = buffer.value.lower()
 
-            if "subway surfers" in title:
-
+            if "subway surfers" in title or "chrome" in title:
                 result["hwnd"] = hwnd
-
                 return False
 
             return True
@@ -121,28 +104,22 @@ class GameLauncher:
         )
 
         self.game_hwnd = result["hwnd"]
-
         return self.game_hwnd
 
     def focus_game(self):
-
         hwnd = self.find_game_window()
 
         if hwnd is None:
             return False
 
         user32 = ctypes.windll.user32
-
         user32.SetForegroundWindow(hwnd)
-
         return True
 
     def is_game_available(self):
-
         return self.find_game_window() is not None
 
     def close_game(self):
-
         if self.chrome_process is None:
             return
 
