@@ -105,7 +105,8 @@ DEBUG_MODE = True
 # GAME
 # ============================================================
 
-GAME_URL = "https://subwaysurfers.gg/"
+# config.py
+GAME_URL = "https://poki.com/en/g/subway-surfers"
 
 
 # ============================================================
