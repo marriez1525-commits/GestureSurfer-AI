@@ -2,6 +2,7 @@ import ctypes
 import time
 
 import cv2
+import pyautogui
 
 from camera.camera import Camera
 from camera.fps import FPSCounter
@@ -26,7 +27,7 @@ from config import (
 CAMERA_WINDOW = "GestureSurfer AI"
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 210
-CAMERA_MARGIN = 15
+CAMERA_MARGIN = 20
 
 HWND_TOPMOST = -1
 SWP_NOACTIVATE = 0x0010
@@ -34,31 +35,21 @@ SWP_SHOWWINDOW = 0x0040
 SW_SHOWNOACTIVATE = 4
 
 
-def position_camera():
+def position_camera_top_right():
+    """Forces the OpenCV camera window to stay pinned at the top right of the screen."""
     user32 = ctypes.windll.user32
 
-    hwnd = user32.FindWindowW(
-        None,
-        CAMERA_WINDOW
-    )
-
+    hwnd = user32.FindWindowW(None, CAMERA_WINDOW)
     if not hwnd:
         return False
 
     screen_width = user32.GetSystemMetrics(0)
 
-    x = (
-        screen_width
-        - CAMERA_WIDTH
-        - CAMERA_MARGIN
-    )
+    # Calculate top-right coordinates
+    x = screen_width - CAMERA_WIDTH - CAMERA_MARGIN
     y = CAMERA_MARGIN
 
-    user32.ShowWindow(
-        hwnd,
-        SW_SHOWNOACTIVATE
-    )
-
+    user32.ShowWindow(hwnd, SW_SHOWNOACTIVATE)
     user32.SetWindowPos(
         hwnd,
         HWND_TOPMOST,
@@ -66,9 +57,8 @@ def position_camera():
         y,
         CAMERA_WIDTH,
         CAMERA_HEIGHT,
-        SWP_NOACTIVATE | SWP_SHOWWINDOW
+        SWP_NOACTIVATE | SWP_SHOWWINDOW,
     )
-
     return True
 
 
@@ -90,9 +80,13 @@ def main():
     game_controller = GameController()
     fps_counter = FPSCounter()
 
+    controller_enabled = True
     game_controller.enable()
 
-    # OpenCV Window setup for floating overlay
+    # Disable PyAutoGUI fail-safe pause for faster clicks
+    pyautogui.FAILSAFE = False
+
+    # OpenCV Window setup
     cv2.namedWindow(CAMERA_WINDOW, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(CAMERA_WINDOW, cv2.WND_PROP_TOPMOST, 1)
     cv2.resizeWindow(CAMERA_WINDOW, CAMERA_WIDTH, CAMERA_HEIGHT)
@@ -104,7 +98,6 @@ def main():
     except Exception as error:
         print(f"\nGame launch error: {error}")
 
-    camera_positioned = False
     game_found = False
     game_focus_done = False
 
@@ -133,13 +126,13 @@ def main():
                 elif pinch_detector.just_pinched(landmarks):
                     action = "CONTINUE"
 
-                # Execute Action
-                if game_controller.is_enabled() and action != ACTION_NONE:
+                # Execute actions
+                if controller_enabled and action != ACTION_NONE:
                     if action == "CONTINUE":
-                        # Space key triggers restart/continue in web Subway Surfers
-                        success = game_controller.keyboard.press("space")
-                        if success:
-                            print("Action executed: CONTINUE (SPACE)")
+                        # Click the middle of the screen to activate/continue the web game canvas
+                        screen_w, screen_h = pyautogui.size()
+                        pyautogui.click(screen_w // 2, screen_h // 2)
+                        print("Action executed: CONTINUE (Mouse Click)")
                     else:
                         success = game_controller.execute(action)
                         if success:
@@ -151,9 +144,8 @@ def main():
                 pinch_detector.reset()
 
             fps = fps_counter.update()
-            dx, dy = motion_tracker.get_delta()
 
-            # Drawing status to frame
+            # Drawing HUD status on overlay
             hand_text = "HAND: ON" if detector.is_hand_detected() else "HAND: LOST"
             hand_color = (0, 255, 0) if detector.is_hand_detected() else (0, 0, 255)
 
@@ -165,8 +157,8 @@ def main():
 
             cv2.imshow(CAMERA_WINDOW, frame)
 
-            # Keep camera anchored top-right and z-ordered on top
-            position_camera()
+            # Keep camera anchored top-right and on top of browser
+            position_camera_top_right()
 
             if not game_found:
                 game_found = game_launcher.is_game_available()
